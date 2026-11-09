@@ -3,6 +3,7 @@ import { MacroPayload, MacroLog } from '../types/macro';
 
 export interface MacroBridgePlugin {
   executeMacro(options: { language: string; code: string }): Promise<{ success?: boolean; output?: string; [key: string]: any }>;
+  executePipeline?(options: { blocks: Array<{ language: string; code: string }>; sharedState?: Record<string, any> }): Promise<{ success?: boolean; output?: string; [key: string]: any }>;
   openAccessibilitySettings(): Promise<{ success?: boolean; opened?: boolean; [key: string]: any }>;
   checkAccessibilityPermission?(): Promise<{ granted: boolean; [key: string]: any }>;
   setOverlayVisible?(options: { visible: boolean }): Promise<{ success: boolean; [key: string]: any }>;
@@ -11,7 +12,7 @@ export interface MacroBridgePlugin {
 
 /**
  * Direct Capacitor Plugin Binding for native Android APK.
- * When running as native APK, Capacitor routes directly to com.acroscript.MacroBridge (or registered native plugin).
+ * When running as native APK, Capacitor routes directly to com.custom.macroexecutor.MacroBridge (or registered native plugin).
  * On web preview, provides a non-blocking mock fallback.
  */
 export const MacroBridge = registerPlugin<MacroBridgePlugin>('MacroBridge', {
@@ -20,6 +21,13 @@ export const MacroBridge = registerPlugin<MacroBridgePlugin>('MacroBridge', {
       return {
         success: true,
         output: `[MacroBridge] Executed ${options.language} macro (${options.code.length} bytes). Running in Web preview.`
+      };
+    },
+    async executePipeline(options: { blocks: Array<{ language: string; code: string }>; sharedState?: Record<string, any> }) {
+      const summary = options.blocks.map((b, idx) => `[Block ${idx + 1}: ${b.language.toUpperCase()}] (${b.code.length} bytes)`).join('\n');
+      return {
+        success: true,
+        output: `[MacroBridge Combined Pipeline Executed]\nTotal Blocks: ${options.blocks.length}\n${summary}\nPipeline completed with 0 errors.`
       };
     },
     async openAccessibilitySettings() {

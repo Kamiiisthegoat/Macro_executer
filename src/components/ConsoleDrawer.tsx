@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Terminal, Copy, Check, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { MacroLog } from '../types/macro';
 
 interface ConsoleDrawerProps {
@@ -48,37 +49,41 @@ export const ConsoleDrawer: React.FC<ConsoleDrawerProps> = ({
   });
 
   return (
-    <div className="border-t border-[var(--border-strong)] bg-[var(--terminal-bg)] font-mono text-xs select-none">
+    <div className="bg-[#141414] border border-[#242424] rounded-lg overflow-hidden font-mono text-xs select-none shadow-xs">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 h-10 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+      <div className="flex items-center justify-between px-3 h-9 border-b border-[#222222] bg-[#0E0E0E]">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 font-bold text-[var(--text-primary)] hover:underline cursor-pointer"
+          className="flex items-center gap-1.5 font-bold text-[#F2F2F2] hover:text-white cursor-pointer"
         >
-          <span>{isOpen ? '[-]' : '[+]'}</span>
-          <span>terminal.log ({logs.length})</span>
+          <Terminal className="w-3.5 h-3.5 text-[#737373]" />
+          <span className="text-xs">Console Output</span>
+          <span className="text-[10px] text-[#666666] font-normal">({logs.length})</span>
+          {isOpen ? <ChevronUp className="w-3 h-3 text-[#737373]" /> : <ChevronDown className="w-3 h-3 text-[#737373]" />}
         </button>
 
         <div className="flex items-center gap-2 text-[11px]">
           {/* Timing Stamp */}
-          <span className="text-[var(--text-primary)] font-bold tabular-nums">
-            [ +{elapsedMs.toFixed(1)}ms {isExecuting ? '...' : ''} ]
+          <span className="text-[#A3A3A3] font-mono tabular-nums text-[10px] bg-[#171717] px-1.5 py-0.5 rounded border border-[#262626]">
+            +{elapsedMs.toFixed(1)}ms {isExecuting ? '...' : ''}
           </span>
 
           {logs.length > 0 && (
             <>
               <button
                 onClick={handleCopyLogs}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:underline cursor-pointer"
+                className="text-[#737373] hover:text-[#F2F2F2] cursor-pointer p-0.5 rounded"
+                title="Copy Terminal Logs"
               >
-                [ {copied ? 'copied!' : 'copy'} ]
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
 
               <button
                 onClick={onClearLogs}
-                className="text-[var(--text-muted)] hover:text-rose-500 hover:underline cursor-pointer"
+                className="text-[#737373] hover:text-[#EF4444] cursor-pointer p-0.5 rounded"
+                title="Clear Logs"
               >
-                [ clear ]
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </>
           )}
@@ -88,77 +93,71 @@ export const ConsoleDrawer: React.FC<ConsoleDrawerProps> = ({
       {/* Drawer content */}
       {isOpen && (
         <div className="flex flex-col">
-          {/* Minimal text filter bar */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] text-[10px]">
-            <span className="text-[var(--text-muted)]">filter:</span>
+          {/* Filter Bar */}
+          <div className="flex items-center gap-3 px-3 py-1 bg-[#121212] border-b border-[#202020] text-[10px]">
+            <span className="text-[#666666]">Filter:</span>
             <button
               onClick={() => setFilter('all')}
               className={`cursor-pointer ${
-                filter === 'all'
-                  ? 'font-bold text-[var(--text-primary)] underline'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                filter === 'all' ? 'text-[#F2F2F2] font-semibold underline' : 'text-[#737373] hover:text-[#A3A3A3]'
               }`}
             >
-              all
+              All
             </button>
-            <span>/</span>
             <button
               onClick={() => setFilter('gestures')}
               className={`cursor-pointer ${
-                filter === 'gestures'
-                  ? 'font-bold text-[var(--text-primary)] underline'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                filter === 'gestures' ? 'text-[#F2F2F2] font-semibold underline' : 'text-[#737373] hover:text-[#A3A3A3]'
               }`}
             >
-              gestures
+              Gestures
             </button>
-            <span>/</span>
             <button
               onClick={() => setFilter('errors')}
               className={`cursor-pointer ${
-                filter === 'errors'
-                  ? 'font-bold text-[var(--text-primary)] underline'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                filter === 'errors' ? 'text-[#EF4444] font-semibold underline' : 'text-[#737373] hover:text-[#A3A3A3]'
               }`}
             >
-              errors
+              Errors
             </button>
           </div>
 
           {/* Log Stream */}
-          <div className="h-40 overflow-y-auto p-2.5 font-mono text-[11px] leading-relaxed space-y-1 select-text bg-[var(--terminal-bg)]">
+          <div className="h-44 overflow-y-auto p-2.5 font-mono text-[11px] leading-relaxed space-y-1 select-text bg-[#090909]">
             {filteredLogs.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-center text-[10px]">
+              <div className="h-full flex items-center justify-center text-[#666666] text-center text-[10px]">
                 {isExecuting
-                  ? '&gt; processing routine instructions...'
-                  : '&gt; status: ready. [ run ] to execute script.'}
+                  ? '> Processing instructions via MacroBridge...'
+                  : '> Ready. Tap Execute to dispatch routine.'}
               </div>
             ) : (
               filteredLogs.map((log) => {
                 return (
                   <div
                     key={log.id}
-                    className="flex items-start gap-1.5 hover:bg-[var(--bg-surface)] px-1 py-0.5 rounded-xs"
+                    className="flex items-start gap-1.5 hover:bg-[#141414] px-1 py-0.5 rounded"
                   >
-                    <span className="text-[var(--text-muted)] shrink-0 tabular-nums text-[10px]">
+                    <span className="text-[#555555] shrink-0 tabular-nums text-[10px]">
                       +{log.elapsedMs.toFixed(1)}ms
                     </span>
 
                     <span
-                      className={`font-bold shrink-0 uppercase text-[10px] ${
+                      className={`font-semibold shrink-0 uppercase text-[10px] ${
                         log.level === 'tap' || log.level === 'swipe' || log.level === 'hold'
-                          ? 'text-cyan-600 dark:text-cyan-400'
+                          ? 'text-cyan-400'
                           : log.level === 'wait'
-                          ? 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-emerald-400'
                           : log.level === 'error' || log.level === 'warn'
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-[var(--text-primary)]'
+                          ? 'text-[#EF4444]'
+                          : log.level === 'success'
+                          ? 'text-emerald-400 font-bold'
+                          : 'text-[#D1D1D1]'
                       }`}
                     >
                       [{log.level}]
                     </span>
 
-                    <span className="text-[var(--text-primary)] break-all">
+                    <span className="text-[#E0E0E0] break-all">
                       {log.message}
                     </span>
                   </div>

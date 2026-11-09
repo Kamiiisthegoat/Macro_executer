@@ -12,15 +12,25 @@ interface ThemeConfig {
   name: string;
   subtitle: string;
   bgHex: string;
+  borderHex: string;
   textHex: string;
 }
 
 export const THEMES: ThemeConfig[] = [
   {
+    id: 'matte-obsidian',
+    name: 'Matte Obsidian (Default)',
+    subtitle: 'Deep pitch-black #0A0A0A, hairline #242424 borders, utility window',
+    bgHex: '#0A0A0A',
+    borderHex: '#242424',
+    textHex: '#F2F2F2'
+  },
+  {
     id: 'clean-light',
-    name: 'Clean Paper Light (Default)',
+    name: 'Clean Paper Light',
     subtitle: 'Off-white #F8F8F8 typewriter paper, #1A1A1A ink text',
     bgHex: '#F8F8F8',
+    borderHex: '#D0D0D0',
     textHex: '#1A1A1A'
   },
   {
@@ -28,6 +38,7 @@ export const THEMES: ThemeConfig[] = [
     name: 'Minimalist Dark',
     subtitle: 'Matte charcoal #111215, soft white text',
     bgHex: '#111215',
+    borderHex: '#272A33',
     textHex: '#F3F4F6'
   },
   {
@@ -35,6 +46,7 @@ export const THEMES: ThemeConfig[] = [
     name: 'Cyber Neon',
     subtitle: 'Deep obsidian #07090E, glowing cyan and violet',
     bgHex: '#07090E',
+    borderHex: '#1E283B',
     textHex: '#06B6D4'
   },
   {
@@ -42,6 +54,7 @@ export const THEMES: ThemeConfig[] = [
     name: 'Retro Matrix Terminal',
     subtitle: 'Pitch black #030603, phosphor matrix green #22C55E',
     bgHex: '#030603',
+    borderHex: '#143514',
     textHex: '#4ADE80'
   },
   {
@@ -49,6 +62,7 @@ export const THEMES: ThemeConfig[] = [
     name: 'Glassmorphic Frost',
     subtitle: 'Translucent dark gradient #0A0E17, ice-blue frost borders',
     bgHex: '#0A0E17',
+    borderHex: 'rgba(255,255,255,0.15)',
     textHex: '#38BDF8'
   }
 ];
@@ -59,21 +73,21 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({
   onClose
 }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xs animate-in fade-in duration-100 font-mono text-xs">
-      <div className="w-full max-w-sm bg-[var(--bg-primary)] border-2 border-[var(--border-strong)] p-4 space-y-3 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-          <span className="font-bold text-[var(--text-primary)] uppercase">
-            :: SELECT_UI_THEME ::
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-100 font-sans text-xs">
+      <div className="w-full max-w-sm bg-[#141414] border border-[#242424] rounded-lg p-4 space-y-3 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#242424] pb-2.5">
+          <span className="font-bold text-[#F2F2F2] tracking-tight uppercase text-xs">
+            UI Style Switcher
           </span>
           <button
             onClick={onClose}
-            className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold"
+            className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] font-mono text-sm px-1.5 py-0.5 rounded hover:bg-[#222222] transition-colors"
           >
-            [X]
+            ✕
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {THEMES.map((theme) => {
             const isSelected = currentTheme === theme.id;
             return (
@@ -83,27 +97,27 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({
                   onSelectTheme(theme.id);
                   onClose();
                 }}
-                className={`w-full text-left p-2.5 border transition-all cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left p-2.5 rounded-md border transition-all cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? 'border-[var(--border-strong)] bg-[var(--bg-surface)] font-bold text-[var(--text-primary)]'
-                    : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+                    ? 'border-[#525252] bg-[#1C1C1C] text-[#F2F2F2]'
+                    : 'border-[#222222] bg-[#141414] text-[#A3A3A3] hover:border-[#383838] hover:text-[#F2F2F2]'
                 }`}
               >
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 pr-2">
                   <div className="flex items-center gap-2">
                     <span
-                      className="w-3 h-3 border border-[var(--border-strong)] inline-block"
-                      style={{ backgroundColor: theme.bgHex }}
+                      className="w-3.5 h-3.5 rounded-sm border inline-block shrink-0"
+                      style={{ backgroundColor: theme.bgHex, borderColor: theme.borderHex }}
                     />
-                    <span className="font-mono text-xs">{theme.name}</span>
+                    <span className="text-xs font-medium tracking-tight text-[#F2F2F2]">{theme.name}</span>
                   </div>
-                  <p className="text-[10px] text-[var(--text-muted)] line-clamp-1 pl-5">
+                  <p className="text-[10px] text-[#737373] line-clamp-1 pl-5.5">
                     {theme.subtitle}
                   </p>
                 </div>
 
-                <span className="font-mono text-xs">
-                  {isSelected ? '[*]' : '[ ]'}
+                <span className="font-mono text-xs text-[#737373] shrink-0">
+                  {isSelected ? '●' : '○'}
                 </span>
               </button>
             );
@@ -112,9 +126,9 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({
 
         <button
           onClick={onClose}
-          className="w-full py-1.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] font-bold cursor-pointer transition-colors"
+          className="w-full py-2 border border-[#2A2A2A] bg-[#1A1A1A] hover:bg-[#242424] text-[#F2F2F2] font-semibold text-xs rounded-md cursor-pointer transition-colors"
         >
-          [ DONE ]
+          Close
         </button>
       </div>
     </div>

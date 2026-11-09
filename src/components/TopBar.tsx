@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Palette, Crosshair, ShieldCheck, Layers, HelpCircle, Activity } from 'lucide-react';
 import { BridgeStatus } from '../services/nativeExecutorBridge';
 
 interface TopBarProps {
@@ -26,112 +27,122 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex items-center justify-between px-2.5 h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] font-mono text-xs select-none overflow-x-auto scrollbar-none gap-2">
-        {/* Brand / Title & Status */}
-        <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <span className="font-extrabold text-[var(--text-primary)] tracking-tight whitespace-nowrap shrink-0">
-            AcroScript.sh
-          </span>
-
-          {/* Native Engine Connected or Sandbox Status */}
-          {bridgeStatus.isNative ? (
-            <span
-              onClick={() => setShowStatusModal(true)}
-              className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 border border-emerald-500/30 whitespace-nowrap shrink-0 cursor-pointer"
-              title="Native Android container detected - click for details"
-            >
-              NATIVE ENGINE: CONNECTED
+      <header className="sticky top-0 z-40 flex items-center justify-between px-3 h-12 border-b border-[#242424] bg-[#0A0A0A] select-none">
+        {/* Left: Window Title & Status */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-sans font-bold text-sm text-[#F2F2F2] tracking-tight whitespace-nowrap">
+              MacroExecutor
             </span>
+            <span className="text-[10px] font-mono text-[#737373] tracking-wider hidden sm:inline-block">
+              PRO
+            </span>
+          </div>
+
+          {/* Native Engine Connected indicator badge */}
+          {bridgeStatus.isNative ? (
+            <button
+              onClick={() => setShowStatusModal(true)}
+              className="cursor-pointer text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded flex items-center gap-1.5 transition-colors whitespace-nowrap"
+              title="Native Android container connected via MacroBridge plugin"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>NATIVE</span>
+            </button>
           ) : (
             <button
               onClick={() => setShowStatusModal(true)}
-              className="cursor-pointer text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors underline whitespace-nowrap shrink-0"
+              className="cursor-pointer text-[10px] font-mono text-[#737373] hover:text-[#A3A3A3] bg-[#141414] border border-[#242424] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap"
               title="Inspect Runtime Environment"
             >
-              [
-              {bridgeStatus.isSimulatedNative
-                ? 'status:simulated'
-                : 'status:sandbox'}
-              ]
+              {bridgeStatus.isSimulatedNative ? 'SIMULATED' : 'SANDBOX'}
             </button>
           )}
-
-          {/* Enable Accessibility Trigger Button */}
-          <button
-            onClick={onEnableAccessibility}
-            className="cursor-pointer text-[10px] font-bold py-1 px-1.5 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-all whitespace-nowrap shrink-0"
-            title="Open Android Accessibility Settings via MacroBridge.openAccessibilitySettings()"
-          >
-            [ enable accessibility ]
-          </button>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-1 text-[11px] whitespace-nowrap shrink-0">
-          {/* Screenshot Coordinate Picker Trigger */}
+        {/* Right: Compact 32x32 Square Icon Buttons */}
+        <div className="flex items-center gap-1.5">
+          {/* 1. Accessibility Action / Settings Trigger */}
           <button
-            onClick={onOpenImagePicker}
-            className="cursor-pointer py-1 px-2 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--accent-primary)] font-bold transition-all whitespace-nowrap shrink-0"
-            title="Open Screenshot Coordinate & Color Picker Tool"
+            onClick={onEnableAccessibility}
+            className="w-8 h-8 rounded-[6px] border border-[#2A2A2A] bg-[#141414] hover:bg-[#1F1F1F] text-[#A3A3A3] hover:text-[#F2F2F2] flex items-center justify-center transition-all cursor-pointer relative"
+            title="Open Android Accessibility Settings (MacroBridge.openAccessibilitySettings)"
           >
-            [ img coords ]
+            <ShieldCheck className="w-4 h-4" />
+            {bridgeStatus.isNative && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            )}
           </button>
 
-          {/* Floating Overlay Widget Toggle */}
+          {/* 2. Coordinate Picker / Spy Tool Trigger */}
+          <button
+            onClick={onOpenImagePicker}
+            className="w-8 h-8 rounded-[6px] border border-[#2A2A2A] bg-[#141414] hover:bg-[#1F1F1F] text-[#A3A3A3] hover:text-[#F2F2F2] flex items-center justify-center transition-all cursor-pointer"
+            title="Open Screenshot Coordinate & Color Picker Tool"
+          >
+            <Crosshair className="w-4 h-4" />
+          </button>
+
+          {/* 3. Floating Overlay Widget Toggle (SYSTEM_ALERT_WINDOW) */}
           <button
             onClick={onToggleOverlay}
-            className={`cursor-pointer py-1 px-1.5 border transition-all whitespace-nowrap shrink-0 ${
+            className={`w-8 h-8 rounded-[6px] border transition-all flex items-center justify-center cursor-pointer ${
               overlayActive
-                ? 'border-[var(--border-strong)] bg-[var(--text-primary)] text-[var(--bg-primary)] font-bold'
-                : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ? 'border-[#525252] bg-[#222222] text-[#F2F2F2]'
+                : 'border-[#2A2A2A] bg-[#141414] hover:bg-[#1F1F1F] text-[#A3A3A3] hover:text-[#F2F2F2]'
             }`}
             title="Toggle Floating Start/Stop Overlay Widget (SYSTEM_ALERT_WINDOW)"
           >
-            [ {overlayActive ? 'overlay:on' : 'overlay:off'} ]
+            <Layers className="w-4 h-4" />
           </button>
 
-          {/* UI Style Switcher Palette Button */}
+          {/* 4. UI Style Switcher Palette Trigger */}
           <button
             onClick={onOpenThemeSwitcher}
-            className="cursor-pointer py-1 px-1.5 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] transition-all whitespace-nowrap shrink-0"
-            title="UI Style Switcher"
+            className="w-8 h-8 rounded-[6px] border border-[#2A2A2A] bg-[#141414] hover:bg-[#1F1F1F] text-[#A3A3A3] hover:text-[#F2F2F2] flex items-center justify-center transition-all cursor-pointer"
+            title={`UI Style Switcher (Current: ${activeThemeName})`}
           >
-            [ theme:{activeThemeName.split(' ')[0].toLowerCase()} ]
+            <Palette className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* Capacitor & Android Architecture Explainer Modal */}
+      {/* Runtime Environment Probe Modal */}
       {showStatusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xs animate-in fade-in duration-100 font-mono text-xs">
-          <div className="w-full max-w-sm bg-[var(--bg-primary)] border-2 border-[var(--border-strong)] p-4 space-y-3 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-              <span className="font-bold text-[var(--text-primary)] uppercase">
-                :: RUNTIME_ENVIRONMENT_PROBE ::
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-100 font-sans text-xs">
+          <div className="w-full max-w-sm bg-[#141414] border border-[#242424] rounded-lg p-4 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#242424] pb-2.5">
+              <span className="font-bold text-[#F2F2F2] tracking-tight uppercase text-xs">
+                Runtime Engine Status
               </span>
               <button
                 onClick={() => setShowStatusModal(false)}
-                className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold"
+                className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] font-mono text-sm px-1.5 py-0.5 rounded hover:bg-[#222222] transition-colors"
               >
-                [X]
+                ✕
               </button>
             </div>
 
-            <div className="space-y-2 text-[11px] text-[var(--text-secondary)] leading-relaxed">
-              <p>Capacitor Android Container / MacroBridge Plugin Status</p>
-
-              <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1 font-mono text-[10px]">
-                <div>
-                  status:{' '}
-                  {bridgeStatus.isNative ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">NATIVE ENGINE: CONNECTED</span>
-                  ) : (
-                    <span>{bridgeStatus.isSimulatedNative ? 'SIMULATED_ANDROID_APK' : 'WEB_SANDBOX_WORKER'}</span>
-                  )}
+            <div className="space-y-2.5 text-xs text-[#A3A3A3] leading-relaxed">
+              <div className="p-3 bg-[#0E0E0E] border border-[#222222] rounded-md space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#737373]">Engine Mode:</span>
+                  <span className={bridgeStatus.isNative ? 'text-emerald-400 font-bold' : 'text-[#F2F2F2]'}>
+                    {bridgeStatus.isNative ? 'NATIVE_ANDROID_CONTAINER' : bridgeStatus.isSimulatedNative ? 'SIMULATED_ANDROID_APK' : 'WEB_SANDBOX_WORKER'}
+                  </span>
                 </div>
-                <div>plugin_id: MacroBridge</div>
-                <div>accessibility_service: {bridgeStatus.isNative ? 'ACTIVE_BINDING' : 'READY'}</div>
-                <div>floating_alert_window: READY</div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#737373]">Plugin ID:</span>
+                  <span className="text-[#F2F2F2]">com.custom.macroexecutor.MacroBridge</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#737373]">Accessibility:</span>
+                  <span className="text-emerald-400 font-bold">{bridgeStatus.isNative ? 'BOUND' : 'READY'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#737373]">NDK / CMake:</span>
+                  <span className="text-[#F2F2F2]">libmacro_engine.so (QuickJS + Luau)</span>
+                </div>
               </div>
 
               {/* Direct Open Accessibility Button */}
@@ -140,41 +151,41 @@ export const TopBar: React.FC<TopBarProps> = ({
                   onEnableAccessibility();
                   setShowStatusModal(false);
                 }}
-                className="w-full py-1.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] font-bold cursor-pointer transition-colors"
+                className="w-full py-2 border border-[#2A2A2A] bg-[#1C1C1C] hover:bg-[#262626] text-[#F2F2F2] font-semibold rounded-md cursor-pointer transition-colors"
               >
-                [ OPEN ACCESSIBILITY SETTINGS ]
+                Open Accessibility Settings
               </button>
 
               {/* Simulation Mode Toggle */}
-              <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+              <div className="pt-2 border-t border-[#222222] flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-[var(--text-primary)] text-xs block">
+                  <span className="font-semibold text-[#F2F2F2] text-xs block">
                     Simulate Android APK
                   </span>
-                  <span className="text-[10px] text-[var(--text-muted)]">
-                    Routes calls via MacroBridge plugin
+                  <span className="text-[10px] text-[#737373]">
+                    Routes calls via MacroBridge plugin mock
                   </span>
                 </div>
                 <button
                   onClick={() => {
                     onToggleSimulatedNative(!bridgeStatus.isSimulatedNative);
                   }}
-                  className={`px-2.5 py-1 text-xs font-bold border transition-colors cursor-pointer ${
+                  className={`px-3 py-1 text-xs font-semibold rounded border transition-colors cursor-pointer ${
                     bridgeStatus.isSimulatedNative
-                      ? 'border-emerald-600 bg-emerald-500 text-slate-950'
-                      : 'border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
+                      ? 'border-emerald-600 bg-emerald-500/20 text-emerald-400'
+                      : 'border-[#2A2A2A] text-[#A3A3A3] hover:text-[#F2F2F2] hover:bg-[#1F1F1F]'
                   }`}
                 >
-                  [ {bridgeStatus.isSimulatedNative ? 'ENABLED' : 'DISABLED'} ]
+                  {bridgeStatus.isSimulatedNative ? 'ENABLED' : 'DISABLED'}
                 </button>
               </div>
             </div>
 
             <button
               onClick={() => setShowStatusModal(false)}
-              className="w-full py-1.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] font-bold cursor-pointer transition-colors"
+              className="w-full py-2 border border-[#242424] bg-[#0E0E0E] text-[#A3A3A3] hover:text-[#F2F2F2] hover:bg-[#1A1A1A] font-semibold text-xs rounded-md cursor-pointer transition-colors"
             >
-              [ CLOSE ]
+              Close
             </button>
           </div>
         </div>

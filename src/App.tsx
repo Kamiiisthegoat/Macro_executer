@@ -6,12 +6,14 @@ import {
   MacroTemplate,
   ProSuite,
   TouchEventMarker,
-  UIThemeId
+  UIThemeId,
+  PipelineBlock
 } from './types/macro';
 import { nativeExecutorBridge, BridgeStatus } from './services/nativeExecutorBridge';
 import { MacroRunner } from './services/macroRunner';
 import { TopBar } from './components/TopBar';
-import { BottomNavBar, MainTab } from './components/BottomNavBar';
+import { SegmentedTabBar, MainTab } from './components/SegmentedTabBar';
+import { SlimStatusFooter } from './components/SlimStatusFooter';
 import { HomeTab } from './components/HomeTab';
 import { TemplatesTab } from './components/TemplatesTab';
 import { PremiumTab } from './components/PremiumTab';
@@ -102,17 +104,37 @@ Java_com_acroscript_native_run_1macro(JNIEnv* env, jobject thiz) {
 };
 
 export default function App() {
-  // Theme state (Clean Paper Light as default)
-  const [currentTheme, setCurrentTheme] = useState<UIThemeId>('clean-light');
+  // Theme state (Matte Obsidian as default)
+  const [currentTheme, setCurrentTheme] = useState<UIThemeId>('matte-obsidian');
   const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
   const [isImagePickerModalOpen, setIsImagePickerModalOpen] = useState<boolean>(false);
 
-  // Navigation tab state
+  // Navigation tab state (Home, Templates, Premium)
   const [activeTab, setActiveTab] = useState<MainTab>('home');
 
-  // Language & Code state
-  const [currentLanguage, setCurrentLanguage] = useState<MacroLanguage>('javascript');
-  const [code, setCode] = useState<string>(DEFAULT_CODE_BY_LANG.javascript);
+  // Language & Code state (Single-Language Mode)
+  const [currentLanguage, setCurrentLanguage] = useState<MacroLanguage>('quickjs');
+  const [code, setCode] = useState<string>(DEFAULT_CODE_BY_LANG.quickjs);
+
+  // Multi-Language Pipeline Mode state
+  const [isMultiLanguage, setIsMultiLanguage] = useState<boolean>(false);
+  const [pipelineBlocks, setPipelineBlocks] = useState<PipelineBlock[]>([
+    {
+      id: 'block-1',
+      language: 'cpp',
+      code: `// 1. High-speed NDK tap via JNI evdev\nnativeTap(540.0f, 1120.0f, 25);\nsharedState["lastTapX"] = 540;`
+    },
+    {
+      id: 'block-2',
+      language: 'luau',
+      code: `-- 2. Typed Luau condition & delay check\nlocal targetX = sharedState.lastTapX or 540\nwait(120)\ntap(targetX, 450)`
+    },
+    {
+      id: 'block-3',
+      language: 'quickjs',
+      code: `// 3. QuickJS event completion & UI confirm\ntap(200, 450);\nconsole.log("Combined multi-language pipeline completed.");`
+    }
+  ]);
 
   // Execution state
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
@@ -142,6 +164,7 @@ export default function App() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove(
+      'theme-matte-obsidian',
       'theme-minimal-dark',
       'theme-cyber-neon',
       'theme-clean-light',
@@ -225,10 +248,8 @@ export default function App() {
   };
 
   /**
-   * Primary Macro Execution Router:
-   * When Capacitor.isNativePlatform() is true, route ALL languages directly to MacroBridge.executeMacro()
-   * and print res.output into the console terminal.
-   * Never execute C++, Kotlin, or Luau in eval() or new Function().
+   * Primary Single-Language Execution Router:
+   * When Capacitor.isNativePlatform() is true, route directly to MacroBridge.executeMacro()
    */
   const executeMacroWithRouting = async (scriptCode: string, lang: MacroLanguage) => {
     if (isExecuting) return;
@@ -307,6 +328,121 @@ export default function App() {
     } else {
       // In Web preview browser sandbox (no native platform):
       await macroRunner.execute(scriptCode, lang);
+    }
+  };
+
+  /**
+   * Combined Multi-Language Pipeline Execution Router:
+   * Dispatches all blocks sequentially or via MacroBridge.executePipeline()
+   */
+  const executePipelineWithRouting = async () => {
+    if (isExecuting || pipelineBlocks.length === 0) return;
+    setElapsedMs(0);
+
+    const isNative = Capacitor.isNativePlatform() || bridgeStatus.isSimulatedNative;
+
+    setIsExecuting(true);
+    startTimeRef.current = performance.now();
+    const runTimer = () => {
+      setElapsedMs(performance.now() - startTimeRef.current);
+      timerFrameRef.current = requestAnimationFrame(runTimer);
+    };
+    timerFrameRef.current = requestAnimationFrame(runTimer);
+
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        elapsedMs: 0,
+        level: 'info',
+        message: `[PIPELINE] Starting combined execution (${pipelineBlocks.length} blocks)...`
+      }
+    ]);
+
+    try {
+      const plugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+
+      if (typeof plugin.executePipeline === 'function') {
+        const res = await plugin.executePipeline({
+          blocks: pipelineBlocks.map((b) => ({ language: b.language, code: b.code })),
+          sharedState: {}
+        });
+
+        const finalElapsed = performance.now() - startTimeRef.current;
+        const outputText = res?.output !== undefined
+          ? (typeof res.output === 'string' ? res.output : JSON.stringify(res.output, null, 2))
+          : `Combined pipeline executed successfully (${pipelineBlocks.length} blocks).`;
+
+        setLogs((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            elapsedMs: finalElapsed,
+            level: 'success',
+            message: outputText
+          }
+        ]);
+      } else {
+        // Sequentially execute blocks via executeMacro
+        for (let i = 0; i < pipelineBlocks.length; i++) {
+          const b = pipelineBlocks[i];
+          const stepElapsed = performance.now() - startTimeRef.current;
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              elapsedMs: stepElapsed,
+              level: 'info',
+              message: `[Step ${i + 1}/${pipelineBlocks.length}] Executing ${b.language.toUpperCase()} block...`
+            }
+          ]);
+
+          if (isNative) {
+            const res = await plugin.executeMacro({ language: b.language, code: b.code });
+            const output = res?.output !== undefined ? (typeof res.output === 'string' ? res.output : JSON.stringify(res.output)) : 'Done';
+            setLogs((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                elapsedMs: performance.now() - startTimeRef.current,
+                level: 'success',
+                message: `[Step ${i + 1} Output] ${output}`
+              }
+            ]);
+          } else {
+            await macroRunner.execute(b.code, b.language);
+          }
+        }
+      }
+    } catch (err: unknown) {
+      const finalElapsed = performance.now() - startTimeRef.current;
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as any).message)
+          : String(err);
+
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          elapsedMs: finalElapsed,
+          level: 'error',
+          message: `Pipeline Execution Error: ${errorMsg}`
+        }
+      ]);
+    } finally {
+      setIsExecuting(false);
+      if (timerFrameRef.current) {
+        cancelAnimationFrame(timerFrameRef.current);
+        timerFrameRef.current = null;
+      }
     }
   };
 
@@ -433,8 +569,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] max-w-full overflow-x-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col antialiased select-none font-mono">
-      {/* Top App Bar with Native Status & Accessibility Trigger */}
+    <div className="min-h-[100dvh] max-w-full overflow-x-hidden bg-[#0A0A0A] text-[#F2F2F2] flex flex-col antialiased select-none font-sans">
+      {/* 1. Compact Top Window Header Bar */}
       <TopBar
         bridgeStatus={bridgeStatus}
         onToggleSimulatedNative={handleToggleSimulatedNative}
@@ -446,8 +582,15 @@ export default function App() {
         onEnableAccessibility={handleEnableAccessibility}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col w-full max-w-4xl mx-auto overflow-x-hidden pb-24">
+      {/* 2. Segmented Tab Bar (Directly Below Header) */}
+      <SegmentedTabBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        proUnlockedCount={unlockedSuiteIds.length}
+      />
+
+      {/* 3. Main Content Area */}
+      <main className="flex-1 flex flex-col w-full max-w-xl mx-auto overflow-x-hidden">
         {activeTab === 'home' && (
           <HomeTab
             currentLanguage={currentLanguage}
@@ -462,6 +605,12 @@ export default function App() {
             onClearLogs={handleClearLogs}
             touchEvents={touchEvents}
             onResetCode={handleResetCode}
+            isNativePlatform={bridgeStatus.isNative}
+            isMultiLanguage={isMultiLanguage}
+            onToggleMultiLanguage={setIsMultiLanguage}
+            pipelineBlocks={pipelineBlocks}
+            onUpdatePipelineBlocks={setPipelineBlocks}
+            onRunPipeline={executePipelineWithRouting}
           />
         )}
 
@@ -502,11 +651,20 @@ export default function App() {
         )}
       </main>
 
+      {/* 4. Fixed Slim Bottom Status Footer */}
+      <SlimStatusFooter
+        isExecuting={isExecuting}
+        currentLanguage={currentLanguage}
+        version="v1.0"
+        isMultiLanguage={isMultiLanguage}
+        blockCount={pipelineBlocks.length}
+      />
+
       {/* Floating Controller Widget Simulator (SYSTEM_ALERT_WINDOW) */}
       <FloatingWidgetSimulator
         isVisible={overlayActive}
         isExecuting={isExecuting}
-        onRun={handleRunMacro}
+        onRun={isMultiLanguage ? executePipelineWithRouting : handleRunMacro}
         onStop={handleStopMacro}
         onClose={() => nativeExecutorBridge.toggleFloatingOverlay(false)}
       />
@@ -522,25 +680,27 @@ export default function App() {
 
       {/* Screenshot Coordinate & Color Picker Modal */}
       {isImagePickerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-2xs animate-in fade-in duration-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-xs animate-in fade-in duration-100">
           <ScreenshotCoordinatePicker
             isModal={true}
             onClose={() => setIsImagePickerModalOpen(false)}
             onInsertToEditor={(x, y, hex) => {
-              setCode((prev) => prev + `\nawait tap(${x}, ${y}); // color: ${hex}`);
+              if (isMultiLanguage && pipelineBlocks.length > 0) {
+                const lastIdx = pipelineBlocks.length - 1;
+                const lastBlock = pipelineBlocks[lastIdx];
+                const updatedCode = lastBlock.code + `\nawait tap(${x}, ${y}); // color: ${hex}`;
+                const nextBlocks = [...pipelineBlocks];
+                nextBlocks[lastIdx] = { ...lastBlock, code: updatedCode };
+                setPipelineBlocks(nextBlocks);
+              } else {
+                setCode((prev) => prev + `\nawait tap(${x}, ${y}); // color: ${hex}`);
+              }
               setActiveTab('home');
               setIsImagePickerModalOpen(false);
             }}
           />
         </div>
       )}
-
-      {/* Fixed Bottom Navigation Bar (Strictly 3 tabs) */}
-      <BottomNavBar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        proUnlockedCount={unlockedSuiteIds.length}
-      />
     </div>
   );
 }

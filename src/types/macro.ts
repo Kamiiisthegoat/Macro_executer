@@ -49,11 +49,18 @@ export interface ProSuite {
 }
 
 export type UIThemeId =
+  | 'matte-obsidian'
+  | 'clean-light'
   | 'minimal-dark'
   | 'cyber-neon'
-  | 'clean-light'
   | 'retro-terminal'
   | 'glass-frost';
+
+export interface PipelineBlock {
+  id: string;
+  language: MacroLanguage;
+  code: string;
+}
 
 export interface TouchEventMarker {
   id: string;

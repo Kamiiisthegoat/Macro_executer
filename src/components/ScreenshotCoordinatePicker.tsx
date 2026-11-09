@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { AsciiHeader } from './AsciiHeader';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Crosshair, Copy, Check, X, ZoomIn } from 'lucide-react';
 
 export interface PickedPoint {
   x: number;
@@ -35,14 +35,12 @@ export const ScreenshotCoordinatePicker: React.FC<ScreenshotCoordinatePickerProp
   const containerRef = useRef<HTMLDivElement>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Initialize offscreen canvas
   useEffect(() => {
     if (!offscreenCanvasRef.current) {
       offscreenCanvasRef.current = document.createElement('canvas');
     }
   }, []);
 
-  // Listen to clipboard paste (e.g. mobile screenshot paste or desktop paste)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       if (e.clipboardData?.items) {
@@ -80,94 +78,68 @@ export const ScreenshotCoordinatePicker: React.FC<ScreenshotCoordinatePickerProp
     }
   };
 
-  const handleClearImage = () => {
-    if (imageSrc) {
-      URL.revokeObjectURL(imageSrc);
-    }
-    setImageSrc(null);
-    setImageDimensions(null);
-    setPickedPoint(null);
-    setAssignedNotice(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    setImageDimensions({ width, height });
+
+    if (offscreenCanvasRef.current) {
+      const canvas = offscreenCanvasRef.current;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
     }
   };
 
-  const handleImageLoad = () => {
-    if (!imageRef.current || !offscreenCanvasRef.current) return;
-    const img = imageRef.current;
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
-    setImageDimensions({ width: nw, height: nh });
-
-    // Draw full resolution onto offscreen canvas for exact color extraction
-    const canvas = offscreenCanvasRef.current;
-    canvas.width = nw;
-    canvas.height = nh;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (ctx) {
-      ctx.drawImage(img, 0, 0, nw, nh);
-    }
-
-    // Default sample point at center
-    samplePixelAt(Math.round(nw / 2), Math.round(nh / 2));
-  };
-
-  // Sample pixel at native (trueX, trueY)
-  const samplePixelAt = useCallback((trueX: number, trueY: number) => {
-    if (!offscreenCanvasRef.current || !imageDimensions) return;
-    const canvas = offscreenCanvasRef.current;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-
-    const clampedX = Math.max(0, Math.min(canvas.width - 1, trueX));
-    const clampedY = Math.max(0, Math.min(canvas.height - 1, trueY));
-
-    try {
-      const pixel = ctx.getImageData(clampedX, clampedY, 1, 1).data;
-      const r = pixel[0].toString(16).padStart(2, '0');
-      const g = pixel[1].toString(16).padStart(2, '0');
-      const b = pixel[2].toString(16).padStart(2, '0');
-      const hex = `#${r}${g}${b}`.toUpperCase();
-
-      setPickedPoint({
-        x: clampedX,
-        y: clampedY,
-        hexColor: hex
-      });
-      setAssignedNotice(null);
-    } catch {
-      // fallback if canvas error
-      setPickedPoint({
-        x: clampedX,
-        y: clampedY,
-        hexColor: '#FFFFFF'
-      });
-    }
-  }, [imageDimensions]);
-
-  // Handle pointer on rendered image
   const handlePointerInteraction = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!imageRef.current || !imageDimensions) return;
-    const rect = imageRef.current.getBoundingClientRect();
+    if (!imageRef.current || !imageDimensions || !offscreenCanvasRef.current) return;
+
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
 
-    const renderedWidth = rect.width;
-    const renderedHeight = rect.height;
+    if (clientX < 0 || clientX > rect.width || clientY < 0 || clientY > rect.height) {
+      return;
+    }
 
-    if (renderedWidth <= 0 || renderedHeight <= 0) return;
+    const trueX = Math.round((clientX / rect.width) * imageDimensions.width);
+    const trueY = Math.round((clientY / rect.height) * imageDimensions.height);
 
-    // Calculate exact native ratio
-    const trueX = Math.round((clientX / renderedWidth) * imageDimensions.width);
-    const trueY = Math.round((clientY / renderedHeight) * imageDimensions.height);
+    const clampedX = Math.max(0, Math.min(imageDimensions.width - 1, trueX));
+    const clampedY = Math.max(0, Math.min(imageDimensions.height - 1, trueY));
 
-    samplePixelAt(trueX, trueY);
+    let hexColor = '#FFFFFF';
+    try {
+      const canvas = offscreenCanvasRef.current;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        const pixel = ctx.getImageData(clampedX, clampedY, 1, 1).data;
+        const r = pixel[0].toString(16).padStart(2, '0').toUpperCase();
+        const g = pixel[1].toString(16).padStart(2, '0').toUpperCase();
+        const b = pixel[2].toString(16).padStart(2, '0').toUpperCase();
+        hexColor = `#${r}${g}${b}`;
+      }
+    } catch {
+      hexColor = '#FFFFFF';
+    }
+
+    setPickedPoint({
+      x: clampedX,
+      y: clampedY,
+      hexColor
+    });
+    setAssignedNotice(null);
   };
 
   const handleCopyCoords = () => {
     if (!pickedPoint) return;
-    navigator.clipboard.writeText(`${pickedPoint.x} x ${pickedPoint.y}`);
+    navigator.clipboard.writeText(`${pickedPoint.x}, ${pickedPoint.y}`);
     setCopiedCoords(true);
     setTimeout(() => setCopiedCoords(false), 2000);
   };
@@ -179,120 +151,105 @@ export const ScreenshotCoordinatePicker: React.FC<ScreenshotCoordinatePickerProp
     setTimeout(() => setCopiedColor(false), 2000);
   };
 
-  const handleSetSoru = () => {
+  const handleAssignSoru = () => {
     if (!pickedPoint || !onAssignSoru) return;
     onAssignSoru({ x: pickedPoint.x, y: pickedPoint.y }, pickedPoint.hexColor);
-    setAssignedNotice('Assigned to Soru coordinates & color ✓');
-    setTimeout(() => setAssignedNotice(null), 2500);
+    setAssignedNotice('Assigned to Soru fields ✓');
+    setTimeout(() => setAssignedNotice(null), 3000);
   };
 
-  const handleSetPortal = () => {
+  const handleAssignPortal = () => {
     if (!pickedPoint || !onAssignPortal) return;
     onAssignPortal({ x: pickedPoint.x, y: pickedPoint.y }, pickedPoint.hexColor);
-    setAssignedNotice('Assigned to Portal x coordinates & color ✓');
-    setTimeout(() => setAssignedNotice(null), 2500);
+    setAssignedNotice('Assigned to Portal fields ✓');
+    setTimeout(() => setAssignedNotice(null), 3000);
   };
 
   const handleInsertEditor = () => {
     if (!pickedPoint || !onInsertToEditor) return;
     onInsertToEditor(pickedPoint.x, pickedPoint.y, pickedPoint.hexColor);
-    setAssignedNotice('Inserted tap routine into editor ✓');
-    setTimeout(() => setAssignedNotice(null), 2500);
+    setAssignedNotice('Inserted into routine editor ✓');
+    setTimeout(() => setAssignedNotice(null), 3000);
   };
 
   return (
-    <div className={`font-mono text-xs select-text space-y-3 bg-[var(--bg-primary)] ${
-      isModal
-        ? 'p-3.5 border-2 border-[var(--border-strong)] shadow-2xl max-w-lg w-full max-h-[92dvh] overflow-y-auto'
-        : 'p-2.5 border border-dashed border-[var(--border-strong)] my-2 w-full'
-    }`}>
-      {/* 1. Single-Line Responsive ASCII Section Header */}
-      <AsciiHeader title="Screenshot_Coordinate_&_Color_Picker" char="=" />
+    <div className="w-full bg-[#141414] border border-[#242424] rounded-lg p-3 space-y-3 font-sans text-xs select-text shadow-xl">
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+      />
 
-      {/* Top Controls / File Picker */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2 select-none text-[11px]">
+      {/* Control Header */}
+      <div className="flex items-center justify-between gap-2 border-b border-[#222222] pb-2">
         <div className="flex items-center gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/*"
-            className="hidden"
-          />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="cursor-pointer font-bold text-[var(--text-primary)] hover:underline border border-[var(--border-strong)] py-1.5 px-2.5 whitespace-nowrap shrink-0"
+            className="cursor-pointer px-2.5 py-1.5 rounded-md border border-[#333333] bg-[#1C1C1C] hover:bg-[#242424] text-[#F2F2F2] font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
-            [ upload screenshot ]
+            <Upload className="w-3.5 h-3.5" />
+            <span>Upload Screenshot</span>
           </button>
 
           {imageSrc && (
-            <button
-              onClick={handleClearImage}
-              className="cursor-pointer text-rose-500 hover:underline py-1.5 px-2 whitespace-nowrap shrink-0"
-            >
-              [ clear image ]
-            </button>
+            <div className="flex items-center gap-1 bg-[#0E0E0E] border border-[#222222] rounded p-0.5 text-[10px]">
+              <button
+                onClick={() => setZoomLevel(1)}
+                className={`px-1.5 py-0.5 rounded cursor-pointer ${zoomLevel === 1 ? 'bg-[#222222] text-[#F2F2F2] font-bold' : 'text-[#737373]'}`}
+              >
+                1x
+              </button>
+              <button
+                onClick={() => setZoomLevel(2)}
+                className={`px-1.5 py-0.5 rounded cursor-pointer ${zoomLevel === 2 ? 'bg-[#222222] text-[#F2F2F2] font-bold' : 'text-[#737373]'}`}
+              >
+                2x
+              </button>
+              <button
+                onClick={() => setZoomLevel(4)}
+                className={`px-1.5 py-0.5 rounded cursor-pointer ${zoomLevel === 4 ? 'bg-[#222222] text-[#F2F2F2] font-bold' : 'text-[#737373]'}`}
+              >
+                4x
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Zoom Mode Selector */}
-        {imageSrc && (
-          <div className="flex items-center gap-1 text-[10px]">
-            <span className="text-[var(--text-muted)]">zoom:</span>
-            <button
-              onClick={() => setZoomLevel(1)}
-              className={`cursor-pointer px-1.5 py-0.5 ${zoomLevel === 1 ? 'font-bold underline text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}
-            >
-              [1x]
-            </button>
-            <button
-              onClick={() => setZoomLevel(2)}
-              className={`cursor-pointer px-1.5 py-0.5 ${zoomLevel === 2 ? 'font-bold underline text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}
-            >
-              [2x zoom]
-            </button>
-            <button
-              onClick={() => setZoomLevel(4)}
-              className={`cursor-pointer px-1.5 py-0.5 ${zoomLevel === 4 ? 'font-bold underline text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}
-            >
-              [4x zoom]
-            </button>
-          </div>
-        )}
 
         {isModal && onClose && (
           <button
             onClick={onClose}
-            className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold ml-auto py-1 px-1.5 whitespace-nowrap shrink-0"
+            className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] p-1 rounded"
           >
-            [ close X ]
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Image Resolution Tag */}
+      {/* Image Resolution Badge */}
       {imageDimensions ? (
-        <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] px-0.5">
+        <div className="flex items-center justify-between text-[11px] text-[#737373] font-mono px-0.5">
           <span>
-            Image resolution: <strong className="text-[var(--text-primary)]">{imageDimensions.width} x {imageDimensions.height}</strong>
+            Native Resolution: <strong className="text-[#F2F2F2]">{imageDimensions.width} × {imageDimensions.height}</strong>
           </span>
-          <span className="whitespace-nowrap shrink-0">100% native pixel ratio</span>
+          <span className="text-emerald-400">100% pixel accurate</span>
         </div>
       ) : (
-        <div className="p-4 text-center border border-dashed border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] space-y-1">
-          <div>-- NO SCREENSHOT LOADED --</div>
-          <div className="text-[10px]">
-            Tap `[ upload screenshot ]` or paste (Ctrl+V) from clipboard
+        <div className="p-4 text-center border border-dashed border-[#242424] rounded-md text-xs text-[#737373] space-y-1">
+          <div>No screenshot loaded yet</div>
+          <div className="text-[10px] text-[#555555]">
+            Upload any screenshot or press Ctrl+V to paste from clipboard
           </div>
         </div>
       )}
 
-      {/* Interactive Screenshot Canvas Container constrained to portrait max-height */}
+      {/* Interactive Screenshot Canvas */}
       {imageSrc && (
         <div
           ref={containerRef}
-          className="relative max-h-[45dvh] w-full overflow-auto border border-[var(--border-strong)] bg-neutral-950 p-1 cursor-crosshair touch-none"
+          className="relative max-h-[45dvh] w-full overflow-auto border border-[#2A2A2A] rounded-md bg-[#080808] p-1 cursor-crosshair touch-none"
         >
           <div
             className="relative inline-block select-none max-w-full"
@@ -323,11 +280,9 @@ export const ScreenshotCoordinatePicker: React.FC<ScreenshotCoordinatePickerProp
                 }}
               >
                 <div className="relative flex items-center justify-center">
-                  {/* Monospace Crosshair */}
                   <div className="w-5 h-5 flex items-center justify-center text-white font-extrabold text-base drop-shadow-md select-none">
                     +
                   </div>
-                  {/* Small pixel color ring */}
                   <div
                     className="absolute w-3 h-3 rounded-full border border-white shadow-xs"
                     style={{ backgroundColor: pickedPoint.hexColor }}
@@ -341,81 +296,73 @@ export const ScreenshotCoordinatePicker: React.FC<ScreenshotCoordinatePickerProp
 
       {/* Monospace Readout & One-Tap Auto-Fill */}
       {pickedPoint && (
-        <div className="space-y-2 pt-1 border-t border-[var(--border-subtle)] text-[11px]">
-          {/* Section Divider with AsciiHeader */}
-          <AsciiHeader title="Picked_Point" char="=" />
-
-          <div className="space-y-2 px-0.5 leading-relaxed">
-            {/* Tapped Coordinates */}
+        <div className="space-y-2 pt-2 border-t border-[#222222] text-xs">
+          <div className="bg-[#0E0E0E] border border-[#222222] rounded-md p-2.5 space-y-2 font-mono">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[var(--text-secondary)]">Tapped coordinates: </span>
-                <strong className="text-[var(--text-primary)] font-bold">
-                  {pickedPoint.x} x {pickedPoint.y}
+                <span className="text-[#737373]">Coords: </span>
+                <strong className="text-[#F2F2F2]">
+                  {pickedPoint.x} × {pickedPoint.y}
                 </strong>
               </div>
               <button
                 onClick={handleCopyCoords}
-                className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline py-1 px-1.5 whitespace-nowrap shrink-0"
+                className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] text-[11px] px-1.5 py-0.5 rounded border border-[#242424]"
               >
-                [ {copiedCoords ? 'copied!' : 'copy'} ]
+                {copiedCoords ? 'Copied' : 'Copy'}
               </button>
             </div>
 
-            {/* Tapped Pixel Color */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[var(--text-secondary)]">Tapped pixel color: </span>
-                <strong className="text-[var(--text-primary)] font-bold">
-                  ({pickedPoint.hexColor})
-                </strong>
+              <div className="flex items-center gap-2">
+                <span className="text-[#737373]">Color: </span>
+                <strong className="text-[#F2F2F2]">{pickedPoint.hexColor}</strong>
                 <span
-                  className="w-4 h-4 border border-[var(--border-strong)] inline-block shadow-2xs shrink-0"
+                  className="w-3.5 h-3.5 rounded-sm border border-[#383838] inline-block"
                   style={{ backgroundColor: pickedPoint.hexColor }}
                 />
               </div>
               <button
                 onClick={handleCopyColor}
-                className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline py-1 px-1.5 whitespace-nowrap shrink-0"
+                className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] text-[11px] px-1.5 py-0.5 rounded border border-[#242424]"
               >
-                [ {copiedColor ? 'copied!' : 'copy'} ]
+                {copiedColor ? 'Copied' : 'Copy'}
               </button>
             </div>
           </div>
 
-          {/* Inline notification if assigned */}
           {assignedNotice && (
-            <div className="text-emerald-600 dark:text-emerald-400 font-bold px-0.5 text-[10px]">
-              ✓ {assignedNotice}
+            <div className="p-2 rounded bg-emerald-950/40 border border-emerald-800/60 text-emerald-400 font-mono text-[11px]">
+              {assignedNotice}
             </div>
           )}
 
-          {/* Quick One-Tap Assignment Buttons with clean wrapping and padding */}
-          <div className="pt-1.5 flex flex-wrap gap-2 text-[10px] font-mono">
+          {/* Auto-Assignment Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             {onAssignSoru && (
               <button
-                onClick={handleSetSoru}
-                className="cursor-pointer py-1.5 px-2.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors font-bold whitespace-nowrap shrink-0"
+                onClick={handleAssignSoru}
+                className="cursor-pointer py-1.5 px-2 rounded-md border border-[#333333] bg-[#1A1A1A] hover:bg-[#222222] text-[#F2F2F2] font-semibold text-xs text-center transition-colors"
               >
-                [ set as Soru coords &amp; color ]
+                Set as Soru Coords &amp; Color
               </button>
             )}
 
             {onAssignPortal && (
               <button
-                onClick={handleSetPortal}
-                className="cursor-pointer py-1.5 px-2.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] transition-colors font-bold whitespace-nowrap shrink-0"
+                onClick={handleAssignPortal}
+                className="cursor-pointer py-1.5 px-2 rounded-md border border-[#333333] bg-[#1A1A1A] hover:bg-[#222222] text-[#F2F2F2] font-semibold text-xs text-center transition-colors"
               >
-                [ set as Portal x coords &amp; color ]
+                Set as Portal Coords &amp; Color
               </button>
             )}
 
             {onInsertToEditor && (
               <button
                 onClick={handleInsertEditor}
-                className="cursor-pointer py-1.5 px-2.5 border border-dashed border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors whitespace-nowrap shrink-0"
+                className="cursor-pointer py-1.5 px-2 rounded-md border border-emerald-600/60 bg-emerald-500/20 text-emerald-400 font-semibold text-xs text-center transition-colors col-span-full"
               >
-                [ + insert tap({pickedPoint.x}, {pickedPoint.y}) to script ]
+                Insert Tap({pickedPoint.x}, {pickedPoint.y}) into Routine
               </button>
             )}
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Square, X, GripVertical, Smartphone } from 'lucide-react';
+import { Play, Square, X, GripVertical, Activity } from 'lucide-react';
 
 interface FloatingWidgetSimulatorProps {
   isVisible: boolean;
@@ -49,45 +49,47 @@ export const FloatingWidgetSimulator: React.FC<FloatingWidgetSimulatorProps> = (
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
       className="fixed z-50 select-none touch-none animate-in fade-in zoom-in-95 duration-150"
     >
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/90 text-white border border-cyan-500/40 shadow-2xl backdrop-blur-md">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-[#141414] text-[#F2F2F2] border border-[#242424] shadow-2xl backdrop-blur-md">
         {/* Drag handle */}
         <div
           onPointerDown={handlePointerDown}
-          className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-white"
-          title="Drag Floating Widget"
+          className="cursor-grab active:cursor-grabbing p-1 text-[#737373] hover:text-[#F2F2F2]"
+          title="Drag Floating Controller"
         >
           <GripVertical className="w-4 h-4" />
         </div>
 
         {/* Status Pill */}
-        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/10 text-[10px] font-mono">
-          <Smartphone className="w-3 h-3 text-cyan-400" />
-          <span>{isExecuting ? 'ACTIVE' : 'READY'}</span>
+        <div className="flex items-center gap-1 px-2 py-1 rounded bg-[#0E0E0E] border border-[#222222] text-[10px] font-mono">
+          <Activity className={`w-3 h-3 ${isExecuting ? 'text-emerald-400 animate-pulse' : 'text-[#737373]'}`} />
+          <span className={isExecuting ? 'text-emerald-400 font-bold' : 'text-[#A3A3A3]'}>
+            {isExecuting ? 'ON' : 'OFF'}
+          </span>
         </div>
 
         {/* Run / Stop action button */}
         {isExecuting ? (
           <button
             onClick={onStop}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl bg-rose-600 hover:bg-rose-500 text-white cursor-pointer transition-colors shadow-xs"
+            className="min-h-[32px] min-w-[32px] px-2.5 flex items-center justify-center rounded-md bg-[#EF4444]/20 border border-[#EF4444]/60 text-[#EF4444] font-semibold text-xs cursor-pointer transition-colors shadow-xs"
             title="Stop Macro Execution"
           >
-            <Square className="w-4 h-4 fill-white" />
+            <Square className="w-3.5 h-3.5 fill-current" />
           </button>
         ) : (
           <button
             onClick={onRun}
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold cursor-pointer transition-colors shadow-xs"
-            title="Run Macro via Overlay"
+            className="min-h-[32px] min-w-[32px] px-2.5 flex items-center justify-center rounded-md bg-[#222222] hover:bg-[#2A2A2A] border border-[#383838] text-[#F2F2F2] font-semibold text-xs cursor-pointer transition-colors shadow-xs"
+            title="Run Macro via Floating Overlay"
           >
-            <Play className="w-4 h-4 fill-slate-950" />
+            <Play className="w-3.5 h-3.5 fill-current" />
           </button>
         )}
 
         {/* Close Widget */}
         <button
           onClick={onClose}
-          className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white cursor-pointer"
+          className="min-h-[28px] min-w-[28px] flex items-center justify-center rounded text-[#737373] hover:text-[#F2F2F2] cursor-pointer"
           title="Dismiss Overlay Widget"
         >
           <X className="w-3.5 h-3.5" />

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Touchpad, Hand, Move, Clock, Repeat, Plus } from 'lucide-react';
 import { MacroLanguage } from '../types/macro';
 
 interface VisualActionBarProps {
@@ -33,32 +34,32 @@ export const VisualActionBar: React.FC<VisualActionBarProps> = ({
     switch (type) {
       case 'tap':
         if (language === 'luau') return `tap(${tapX}, ${tapY})\n`;
-        if (language === 'kotlin') return `// Native Tap\ndispatchTap(service, ${tapX}f, ${tapY}f)\n`;
-        if (language === 'cpp') return `emit_tap(fd, ${tapX}, ${tapY}, 30000);\n`;
+        if (language === 'kotlin') return `MacroAccessibilityService.tap(${tapX}f, ${tapY}f, 50L)\n`;
+        if (language === 'cpp') return `nativeTap(${tapX}f, ${tapY}f, 30);\n`;
         return `await tap(${tapX}, ${tapY});\n`;
 
       case 'hold':
         if (language === 'luau') return `hold(${holdX}, ${holdY}, ${holdMs})\n`;
-        if (language === 'kotlin') return `// Native Long-Press\nexecuteLongPress(service, ${holdX}f, ${holdY}f, ${holdMs}L)\n`;
-        if (language === 'cpp') return `perform_hold(fd, ${holdX}, ${holdY}, ${holdMs});\n`;
+        if (language === 'kotlin') return `MacroAccessibilityService.tap(${holdX}f, ${holdY}f, ${holdMs}L)\n`;
+        if (language === 'cpp') return `nativeTap(${holdX}f, ${holdY}f, ${holdMs});\n`;
         return `await hold(${holdX}, ${holdY}, ${holdMs});\n`;
 
       case 'swipe':
         if (language === 'luau') return `swipe(${swipeX1}, ${swipeY1}, ${swipeX2}, ${swipeY2}, ${swipeMs})\n`;
-        if (language === 'kotlin') return `// Native Swipe Gesture\nexecuteSwipe(service, ${swipeX1}f, ${swipeY1}f, ${swipeX2}f, ${swipeY2}f, ${swipeMs}L)\n`;
-        if (language === 'cpp') return `smooth_swipe(fd, ${swipeX1}, ${swipeY1}, ${swipeX2}, ${swipeY2}, 25);\n`;
+        if (language === 'kotlin') return `MacroAccessibilityService.swipe(${swipeX1}f, ${swipeY1}f, ${swipeX2}f, ${swipeY2}f, ${swipeMs}L)\n`;
+        if (language === 'cpp') return `nativeTap(${swipeX1}f, ${swipeY1}f, ${swipeMs}); // swipe(${swipeX1},${swipeY1}->${swipeX2},${swipeY2})\n`;
         return `await swipe(${swipeX1}, ${swipeY1}, ${swipeX2}, ${swipeY2}, ${swipeMs});\n`;
 
       case 'wait':
         if (language === 'luau') return `wait(${waitMs})\n`;
-        if (language === 'kotlin') return `delay(${waitMs}L)\n`;
+        if (language === 'kotlin') return `Thread.sleep(${waitMs}L)\n`;
         if (language === 'cpp') return `usleep(${waitMs * 1000}); // ${waitMs}ms\n`;
         return `await wait(${waitMs});\n`;
 
       case 'loop':
         if (language === 'luau') return `for i = 1, ${loopCount} do\n  tap(200, 450)\n  wait(100)\nend\n`;
-        if (language === 'kotlin') return `repeat(${loopCount}) {\n  dispatchTap(service, 200f, 450f)\n  delay(100L)\n}\n`;
-        if (language === 'cpp') return `for (int i = 0; i < ${loopCount}; ++i) {\n  emit_tap(fd, 200, 450, 25000);\n  usleep(100000);\n}\n`;
+        if (language === 'kotlin') return `repeat(${loopCount}) {\n  MacroAccessibilityService.tap(200f, 450f, 50L)\n  Thread.sleep(100L)\n}\n`;
+        if (language === 'cpp') return `for (int i = 0; i < ${loopCount}; ++i) {\n  nativeTap(200.0f, 450.0f, 25);\n  usleep(100000);\n}\n`;
         return `await loop(${loopCount}, async (i) => {\n  await tap(200, 450);\n  await wait(100);\n});\n`;
     }
   };
@@ -69,241 +70,186 @@ export const VisualActionBar: React.FC<VisualActionBarProps> = ({
     setActiveModal(null);
   };
 
+  const actions: Array<{ id: 'tap' | 'hold' | 'swipe' | 'wait' | 'loop'; label: string; icon: React.ReactNode }> = [
+    { id: 'tap', label: 'Tap', icon: <Touchpad className="w-3 h-3 text-[#A3A3A3]" /> },
+    { id: 'hold', label: 'Hold', icon: <Hand className="w-3 h-3 text-[#A3A3A3]" /> },
+    { id: 'swipe', label: 'Swipe', icon: <Move className="w-3 h-3 text-[#A3A3A3]" /> },
+    { id: 'wait', label: 'Wait', icon: <Clock className="w-3 h-3 text-[#A3A3A3]" /> },
+    { id: 'loop', label: 'Loop', icon: <Repeat className="w-3 h-3 text-[#A3A3A3]" /> }
+  ];
+
   return (
     <>
-      <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-3 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] font-mono text-xs select-none">
-        <span className="text-[10px] text-[var(--text-muted)] shrink-0 mr-1">
-          ACTIONS:
-        </span>
-
-        {/* Tap */}
-        <button
-          onClick={() => setActiveModal('tap')}
-          className="min-h-[40px] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:underline border border-transparent hover:border-[var(--border-subtle)] shrink-0 transition-all cursor-pointer"
-        >
-          [ + Tap ]
-        </button>
-
-        {/* Hold */}
-        <button
-          onClick={() => setActiveModal('hold')}
-          className="min-h-[40px] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:underline border border-transparent hover:border-[var(--border-subtle)] shrink-0 transition-all cursor-pointer"
-        >
-          [ + Hold ]
-        </button>
-
-        {/* Swipe */}
-        <button
-          onClick={() => setActiveModal('swipe')}
-          className="min-h-[40px] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:underline border border-transparent hover:border-[var(--border-subtle)] shrink-0 transition-all cursor-pointer"
-        >
-          [ + Swipe ]
-        </button>
-
-        {/* Wait */}
-        <button
-          onClick={() => setActiveModal('wait')}
-          className="min-h-[40px] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:underline border border-transparent hover:border-[var(--border-subtle)] shrink-0 transition-all cursor-pointer"
-        >
-          [ + Wait ]
-        </button>
-
-        {/* Loop */}
-        <button
-          onClick={() => setActiveModal('loop')}
-          className="min-h-[40px] px-2 py-1 text-[11px] text-[var(--text-primary)] hover:underline border border-transparent hover:border-[var(--border-subtle)] shrink-0 transition-all cursor-pointer"
-        >
-          [ + Loop ]
-        </button>
+      <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none select-none">
+        {actions.map((act) => (
+          <button
+            key={act.id}
+            onClick={() => setActiveModal(act.id)}
+            className="h-8 px-2.5 rounded-md border border-[#2A2A2A] bg-[#141414] hover:bg-[#1F1F1F] hover:border-[#383838] text-[#F2F2F2] text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+          >
+            {act.icon}
+            <span>+{act.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Retro Typewriter Parameter Modal */}
+      {/* Parameter Configuration Modal */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xs animate-in fade-in duration-100 font-mono text-xs">
-          <div className="w-full max-w-sm bg-[var(--bg-primary)] border-2 border-[var(--border-strong)] p-4 space-y-3 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-1.5">
-              <span className="font-bold text-[var(--text-primary)] uppercase">
-                :: CONFIGURE_{activeModal.toUpperCase()} ::
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-100 font-sans text-xs">
+          <div className="w-full max-w-sm bg-[#141414] border border-[#242424] rounded-lg p-4 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#242424] pb-2.5">
+              <span className="font-bold text-[#F2F2F2] tracking-tight uppercase text-xs">
+                Configure {activeModal.toUpperCase()} Action
               </span>
               <button
                 onClick={() => setActiveModal(null)}
-                className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold"
+                className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] text-sm px-1"
               >
-                [X]
+                ✕
               </button>
             </div>
 
             {activeModal === 'tap' && (
-              <div className="space-y-2 py-1 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">x coordinate:</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
-                    <input
-                      type="number"
-                      value={tapX}
-                      onChange={(e) => setTapX(Number(e.target.value))}
-                      className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)] font-mono"
-                    />
-                    <span>]</span>
-                  </div>
+              <div className="space-y-2 py-1 text-xs">
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">X coordinate:</span>
+                  <input
+                    type="number"
+                    value={tapX}
+                    onChange={(e) => setTapX(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                  />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">y coordinate:</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
-                    <input
-                      type="number"
-                      value={tapY}
-                      onChange={(e) => setTapY(Number(e.target.value))}
-                      className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)] font-mono"
-                    />
-                    <span>]</span>
-                  </div>
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">Y coordinate:</span>
+                  <input
+                    type="number"
+                    value={tapY}
+                    onChange={(e) => setTapY(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                  />
                 </div>
               </div>
             )}
 
             {activeModal === 'hold' && (
-              <div className="space-y-2 py-1 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">coordinates:</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
+              <div className="space-y-2 py-1 text-xs">
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">Coordinates (X, Y):</span>
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       value={holdX}
                       onChange={(e) => setHoldX(Number(e.target.value))}
-                      className="w-14 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)] font-mono"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>] x [</span>
+                    <span className="text-[#666666]">×</span>
                     <input
                       type="number"
                       value={holdY}
                       onChange={(e) => setHoldY(Number(e.target.value))}
-                      className="w-14 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)] font-mono"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>]</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">hold duration (ms):</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
-                    <input
-                      type="number"
-                      value={holdMs}
-                      onChange={(e) => setHoldMs(Number(e.target.value))}
-                      className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)] font-mono"
-                    />
-                    <span>]</span>
-                  </div>
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">Hold duration (ms):</span>
+                  <input
+                    type="number"
+                    value={holdMs}
+                    onChange={(e) => setHoldMs(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                  />
                 </div>
               </div>
             )}
 
             {activeModal === 'swipe' && (
-              <div className="space-y-2 py-1 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">start (x1, y1):</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
+              <div className="space-y-2 py-1 text-xs">
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">Start (X1, Y1):</span>
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       value={swipeX1}
                       onChange={(e) => setSwipeX1(Number(e.target.value))}
-                      className="w-12 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>,</span>
+                    <span className="text-[#666666]">,</span>
                     <input
                       type="number"
                       value={swipeY1}
                       onChange={(e) => setSwipeY1(Number(e.target.value))}
-                      className="w-12 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>]</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">end (x2, y2):</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">End (X2, Y2):</span>
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       value={swipeX2}
                       onChange={(e) => setSwipeX2(Number(e.target.value))}
-                      className="w-12 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>,</span>
+                    <span className="text-[#666666]">,</span>
                     <input
                       type="number"
                       value={swipeY2}
                       onChange={(e) => setSwipeY2(Number(e.target.value))}
-                      className="w-12 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
+                      className="w-16 px-1.5 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
                     />
-                    <span>]</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">duration (ms):</span>
-                  <div className="flex items-center gap-1">
-                    <span>[</span>
-                    <input
-                      type="number"
-                      value={swipeMs}
-                      onChange={(e) => setSwipeMs(Number(e.target.value))}
-                      className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
-                    />
-                    <span>]</span>
-                  </div>
+                <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2">
+                  <span className="text-[#A3A3A3]">Duration (ms):</span>
+                  <input
+                    type="number"
+                    value={swipeMs}
+                    onChange={(e) => setSwipeMs(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                  />
                 </div>
               </div>
             )}
 
             {activeModal === 'wait' && (
-              <div className="flex items-center justify-between py-2 text-[11px]">
-                <span className="text-[var(--text-secondary)]">wait delay (ms):</span>
-                <div className="flex items-center gap-1">
-                  <span>[</span>
-                  <input
-                    type="number"
-                    value={waitMs}
-                    onChange={(e) => setWaitMs(Number(e.target.value))}
-                    className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
-                  />
-                  <span>]</span>
-                </div>
+              <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2.5">
+                <span className="text-[#A3A3A3]">Wait delay (ms):</span>
+                <input
+                  type="number"
+                  value={waitMs}
+                  onChange={(e) => setWaitMs(Number(e.target.value))}
+                  className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                />
               </div>
             )}
 
             {activeModal === 'loop' && (
-              <div className="flex items-center justify-between py-2 text-[11px]">
-                <span className="text-[var(--text-secondary)]">loop repeat count:</span>
-                <div className="flex items-center gap-1">
-                  <span>[</span>
-                  <input
-                    type="number"
-                    value={loopCount}
-                    onChange={(e) => setLoopCount(Number(e.target.value))}
-                    className="w-16 px-1 py-0.5 text-center bg-transparent border-b border-[var(--border-strong)] outline-none text-[var(--text-primary)]"
-                  />
-                  <span>]</span>
-                </div>
+              <div className="flex items-center justify-between bg-[#0E0E0E] border border-[#222222] rounded p-2.5">
+                <span className="text-[#A3A3A3]">Loop repeat count:</span>
+                <input
+                  type="number"
+                  value={loopCount}
+                  onChange={(e) => setLoopCount(Number(e.target.value))}
+                  className="w-20 px-2 py-1 text-center bg-[#141414] border border-[#2E2E2E] rounded text-[#F2F2F2] font-mono outline-none"
+                />
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#242424]">
               <button
                 onClick={() => setActiveModal(null)}
-                className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-1"
+                className="cursor-pointer text-[#737373] hover:text-[#F2F2F2] px-3 py-1.5"
               >
-                [ cancel ]
+                Cancel
               </button>
               <button
                 onClick={() => handleConfirmInsert(activeModal)}
-                className="cursor-pointer font-bold border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)] px-3 py-1 transition-colors"
+                className="cursor-pointer font-semibold rounded-md border border-[#383838] bg-[#222222] hover:bg-[#2A2A2A] text-[#F2F2F2] px-3.5 py-1.5 transition-colors"
               >
-                [ INSERT CODE ]
+                Insert Snippet
               </button>
             </div>
           </div>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { Play, Square, Crosshair, Copy, Check, Code, ArrowUpRight } from 'lucide-react';
 import { ConfigurableMacroConfig, MacroLanguage } from '../types/macro';
 import { generateScriptForConfig } from '../data/premadeConfigs';
 import { ScreenshotCoordinatePicker } from './ScreenshotCoordinatePicker';
-import { AsciiHeader } from './AsciiHeader';
 
 interface ConfigurableMacroCardProps {
   initialConfig: ConfigurableMacroConfig;
@@ -29,9 +29,7 @@ export const ConfigurableMacroCard: React.FC<ConfigurableMacroCardProps> = ({
   // Generate the live script from active state
   const liveScript = generateScriptForConfig(config, currentLanguage);
 
-  // Whenever config changes and it's loaded, sync with executor
   const handleLoad = () => {
-    // Validate coordinates
     const sx = Number(config.soruCoords.x);
     const sy = Number(config.soruCoords.y);
     const px = Number(config.portalCoords.x);
@@ -41,23 +39,21 @@ export const ConfigurableMacroCard: React.FC<ConfigurableMacroCardProps> = ({
       setConfig((prev) => ({
         ...prev,
         status: 'error',
-        errorMessage: 'error: coordinates must be valid numbers'
+        errorMessage: 'Coordinates must be valid numbers'
       }));
       return;
     }
 
-    // Validate hex colors (simple 3 or 6 hex check)
     const hexRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
     if (!hexRegex.test(config.soruColor) || !hexRegex.test(config.portalColor)) {
       setConfig((prev) => ({
         ...prev,
         status: 'error',
-        errorMessage: 'error: colors must be valid hex (e.g. #FFFFFF)'
+        errorMessage: 'Colors must be valid hex (e.g. #FFFFFF)'
       }));
       return;
     }
 
-    // Success
     setConfig((prev) => ({
       ...prev,
       status: 'loaded',
@@ -85,194 +81,163 @@ export const ConfigurableMacroCard: React.FC<ConfigurableMacroCardProps> = ({
   };
 
   return (
-    <div className="w-full my-4 text-xs font-mono select-text space-y-3 pb-3 border-b border-[var(--border-subtle)]">
-      {/* 1. Single-Line Responsive ASCII Section Header */}
-      <AsciiHeader title={config.name} char="=" />
-
-      {/* 2. Status & Load Trigger Row */}
-      <div className="flex items-center justify-between py-1 px-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-[var(--text-primary)] font-medium whitespace-nowrap">
-            {config.title}:
+    <div className="w-full bg-[#141414] border border-[#242424] rounded-lg p-3.5 space-y-3 font-sans text-xs select-text shadow-xs">
+      {/* 1. Header Row */}
+      <div className="flex items-center justify-between border-b border-[#1F1F1F] pb-2.5">
+        <div className="space-y-0.5">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-[#F2F2F2]">
+            {config.title || config.name}
+          </h3>
+          <span className="text-[10px] text-[#737373]">
+            Pre-made optimized routine for {currentLanguage.toUpperCase()}
           </span>
-          <button
-            onClick={handleLoad}
-            className={`cursor-pointer py-1.5 px-2.5 transition-colors font-bold whitespace-nowrap shrink-0 ${
-              config.status === 'loaded'
-                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 underline'
-                : config.status === 'error'
-                ? 'text-rose-600 dark:text-rose-400 bg-rose-500/10 underline'
-                : 'text-[var(--text-primary)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-surface-hover)] underline'
-            }`}
-          >
-            [ {config.status === 'loaded' ? 'loaded ✓' : config.status === 'error' ? 'error ✗' : 'load'} ]
-          </button>
         </div>
 
-        {config.status === 'loaded' && (
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap shrink-0">
-            live binding active
-          </span>
-        )}
+        {/* Load Status Pill Button */}
+        <button
+          onClick={handleLoad}
+          className={`cursor-pointer px-2.5 py-1 rounded text-xs font-semibold border transition-all active:scale-95 ${
+            config.status === 'loaded'
+              ? 'border-emerald-500/80 bg-emerald-500/10 text-emerald-400'
+              : config.status === 'error'
+              ? 'border-[#EF4444]/80 bg-[#EF4444]/10 text-[#EF4444]'
+              : 'border-[#333333] bg-[#1C1C1C] hover:bg-[#242424] text-[#F2F2F2]'
+          }`}
+        >
+          {config.status === 'loaded' ? 'Loaded ✓' : config.status === 'error' ? 'Error ✗' : 'Load Config'}
+        </button>
       </div>
 
       {/* Inline error note if error */}
       {config.status === 'error' && config.errorMessage && (
-        <div className="px-2 py-1 text-[11px] text-rose-500 bg-rose-500/10 font-mono">
-          ! {config.errorMessage}
+        <div className="px-2.5 py-1.5 text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 rounded">
+          {config.errorMessage}
         </div>
       )}
 
-      {/* 3. Editable Coordinate & Hex Color Fields Underneath (Clean Portrait Stacking) */}
-      <div className="space-y-3 px-0.5 text-[11px] leading-relaxed">
-        {/* Field 1: Soru Coordinates */}
-        <div className="space-y-1">
-          <span className="text-[var(--text-secondary)] whitespace-nowrap block font-medium">
-            Soru coordinates:
-          </span>
-          <div className="flex items-center gap-1.5 w-full">
-            <span className="text-[var(--text-muted)] shrink-0">[</span>
-            <input
-              type="number"
-              value={config.soruCoords.x}
-              onChange={(e) =>
-                handleUpdate({
-                  soruCoords: { ...config.soruCoords, x: Number(e.target.value) }
-                })
-              }
-              placeholder="X"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono text-xs"
-            />
-            <span className="text-[var(--text-muted)] shrink-0">]</span>
-            <span className="text-[var(--text-muted)] shrink-0 px-1 font-bold">x</span>
-            <span className="text-[var(--text-muted)] shrink-0">[</span>
-            <input
-              type="number"
-              value={config.soruCoords.y}
-              onChange={(e) =>
-                handleUpdate({
-                  soruCoords: { ...config.soruCoords, y: Number(e.target.value) }
-                })
-              }
-              placeholder="Y"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono text-xs"
-            />
-            <span className="text-[var(--text-muted)] shrink-0">]</span>
+      {/* 2. Setting Rows for Coordinates & Colors */}
+      <div className="space-y-2 text-xs">
+        {/* Soru Coordinates */}
+        <div className="bg-[#0E0E0E] border border-[#222222] rounded-md p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-[#A3A3A3]">
+            <span>Soru Coordinates</span>
+            <span className="text-[10px] text-[#666666]">Trigger Target</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center bg-[#141414] border border-[#2A2A2A] rounded px-2 py-1">
+              <span className="text-[#666666] text-[10px] font-mono mr-1">X:</span>
+              <input
+                type="number"
+                value={config.soruCoords.x}
+                onChange={(e) =>
+                  handleUpdate({
+                    soruCoords: { ...config.soruCoords, x: Number(e.target.value) }
+                  })
+                }
+                className="w-full bg-transparent text-[#F2F2F2] font-mono text-xs outline-none text-center"
+              />
+            </div>
+            <span className="text-[#666666]">×</span>
+            <div className="flex-1 flex items-center bg-[#141414] border border-[#2A2A2A] rounded px-2 py-1">
+              <span className="text-[#666666] text-[10px] font-mono mr-1">Y:</span>
+              <input
+                type="number"
+                value={config.soruCoords.y}
+                onChange={(e) =>
+                  handleUpdate({
+                    soruCoords: { ...config.soruCoords, y: Number(e.target.value) }
+                  })
+                }
+                className="w-full bg-transparent text-[#F2F2F2] font-mono text-xs outline-none text-center"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Field 2: Portal X Coordinates */}
-        <div className="space-y-1">
-          <span className="text-[var(--text-secondary)] whitespace-nowrap block font-medium">
-            Portal x coordinates:
-          </span>
-          <div className="flex items-center gap-1.5 w-full">
-            <span className="text-[var(--text-muted)] shrink-0">[</span>
-            <input
-              type="number"
-              value={config.portalCoords.x}
-              onChange={(e) =>
-                handleUpdate({
-                  portalCoords: { ...config.portalCoords, x: Number(e.target.value) }
-                })
-              }
-              placeholder="X"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono text-xs"
-            />
-            <span className="text-[var(--text-muted)] shrink-0">]</span>
-            <span className="text-[var(--text-muted)] shrink-0 px-1 font-bold">x</span>
-            <span className="text-[var(--text-muted)] shrink-0">[</span>
-            <input
-              type="number"
-              value={config.portalCoords.y}
-              onChange={(e) =>
-                handleUpdate({
-                  portalCoords: { ...config.portalCoords, y: Number(e.target.value) }
-                })
-              }
-              placeholder="Y"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono text-xs"
-            />
-            <span className="text-[var(--text-muted)] shrink-0">]</span>
+        {/* Portal Coordinates */}
+        <div className="bg-[#0E0E0E] border border-[#222222] rounded-md p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-[#A3A3A3]">
+            <span>Portal Coordinates</span>
+            <span className="text-[10px] text-[#666666]">Secondary Target</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center bg-[#141414] border border-[#2A2A2A] rounded px-2 py-1">
+              <span className="text-[#666666] text-[10px] font-mono mr-1">X:</span>
+              <input
+                type="number"
+                value={config.portalCoords.x}
+                onChange={(e) =>
+                  handleUpdate({
+                    portalCoords: { ...config.portalCoords, x: Number(e.target.value) }
+                  })
+                }
+                className="w-full bg-transparent text-[#F2F2F2] font-mono text-xs outline-none text-center"
+              />
+            </div>
+            <span className="text-[#666666]">×</span>
+            <div className="flex-1 flex items-center bg-[#141414] border border-[#2A2A2A] rounded px-2 py-1">
+              <span className="text-[#666666] text-[10px] font-mono mr-1">Y:</span>
+              <input
+                type="number"
+                value={config.portalCoords.y}
+                onChange={(e) =>
+                  handleUpdate({
+                    portalCoords: { ...config.portalCoords, y: Number(e.target.value) }
+                  })
+                }
+                className="w-full bg-transparent text-[#F2F2F2] font-mono text-xs outline-none text-center"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Field 3: Soru Pixel Color */}
-        <div className="space-y-1">
-          <span className="text-[var(--text-secondary)] whitespace-nowrap block font-medium">
-            Soru pixel color:
-          </span>
-          <div className="flex items-center gap-2 w-full">
-            <span className="text-[var(--text-muted)] shrink-0">(</span>
+        {/* Soru Color Swatch & Input */}
+        <div className="bg-[#0E0E0E] border border-[#222222] rounded-md p-2.5 flex items-center justify-between gap-2">
+          <span className="text-[#A3A3A3] whitespace-nowrap">Soru Color</span>
+          <div className="flex items-center gap-2">
+            <span
+              className="w-4 h-4 rounded-sm border border-[#383838] shrink-0"
+              style={{ backgroundColor: config.soruColor || '#FFFFFF' }}
+            />
             <input
               type="text"
               value={config.soruColor}
               onChange={(e) => handleUpdate({ soruColor: e.target.value })}
-              placeholder="#FFFFFF"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono uppercase text-xs"
+              className="w-20 bg-[#141414] border border-[#2A2A2A] text-[#F2F2F2] font-mono text-xs px-2 py-0.5 rounded text-center outline-none uppercase"
             />
-            <span className="text-[var(--text-muted)] shrink-0">)</span>
-
-            {/* Live Color Preview Swatch */}
-            <span
-              className="w-5 h-5 rounded-xs border border-[var(--border-strong)] inline-block shadow-2xs shrink-0"
-              style={{ backgroundColor: config.soruColor || '#FFFFFF' }}
-              title={`Preview: ${config.soruColor}`}
-            />
-
-            <button
-              onClick={() => navigator.clipboard.writeText(config.soruColor)}
-              className="cursor-pointer text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline whitespace-nowrap shrink-0 py-1 px-1.5"
-            >
-              [ copy ]
-            </button>
           </div>
         </div>
 
-        {/* Field 4: Portal X Pixel Color */}
-        <div className="space-y-1">
-          <span className="text-[var(--text-secondary)] whitespace-nowrap block font-medium">
-            Portal x pixel color:
-          </span>
-          <div className="flex items-center gap-2 w-full">
-            <span className="text-[var(--text-muted)] shrink-0">(</span>
+        {/* Portal Color Swatch & Input */}
+        <div className="bg-[#0E0E0E] border border-[#222222] rounded-md p-2.5 flex items-center justify-between gap-2">
+          <span className="text-[#A3A3A3] whitespace-nowrap">Portal Color</span>
+          <div className="flex items-center gap-2">
+            <span
+              className="w-4 h-4 rounded-sm border border-[#383838] shrink-0"
+              style={{ backgroundColor: config.portalColor || '#FFFFFF' }}
+            />
             <input
               type="text"
               value={config.portalColor}
               onChange={(e) => handleUpdate({ portalColor: e.target.value })}
-              placeholder="#FFFFFF"
-              className="flex-1 min-w-0 px-2 py-1 text-center bg-transparent border-b border-[var(--border-subtle)] focus:border-[var(--text-primary)] text-[var(--text-primary)] outline-none font-mono uppercase text-xs"
+              className="w-20 bg-[#141414] border border-[#2A2A2A] text-[#F2F2F2] font-mono text-xs px-2 py-0.5 rounded text-center outline-none uppercase"
             />
-            <span className="text-[var(--text-muted)] shrink-0">)</span>
-
-            {/* Live Color Preview Swatch */}
-            <span
-              className="w-5 h-5 rounded-xs border border-[var(--border-strong)] inline-block shadow-2xs shrink-0"
-              style={{ backgroundColor: config.portalColor || '#FFFFFF' }}
-              title={`Preview: ${config.portalColor}`}
-            />
-
-            <button
-              onClick={() => navigator.clipboard.writeText(config.portalColor)}
-              className="cursor-pointer text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline whitespace-nowrap shrink-0 py-1 px-1.5"
-            >
-              [ copy ]
-            </button>
           </div>
         </div>
+      </div>
 
-        {/* Toggle Button for Screenshot Coordinate & Color Picker */}
-        <div className="pt-1.5">
-          <button
-            onClick={() => setShowImagePicker(!showImagePicker)}
-            className="cursor-pointer text-[11px] font-bold text-[var(--accent-primary)] hover:underline border border-[var(--border-subtle)] hover:border-[var(--border-strong)] py-1.5 px-2.5 transition-all whitespace-nowrap shrink-0"
-          >
-            [ {showImagePicker ? 'hide image picker' : 'import image / pick coords'} ]
-          </button>
-        </div>
+      {/* Coordinate Picker Toggle Button */}
+      <button
+        onClick={() => setShowImagePicker(!showImagePicker)}
+        className="w-full py-2 rounded-md border border-[#2A2A2A] bg-[#101010] hover:bg-[#1A1A1A] text-[#A3A3A3] hover:text-[#F2F2F2] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+      >
+        <Crosshair className="w-3.5 h-3.5 text-[#A3A3A3]" />
+        <span>{showImagePicker ? 'Hide Image Picker' : 'Pick Coords from Screenshot'}</span>
+      </button>
 
-        {/* Inline Screenshot Coordinate Picker if open */}
-        {showImagePicker && (
+      {/* Inline Screenshot Coordinate Picker if open */}
+      {showImagePicker && (
+        <div className="bg-[#0A0A0A] border border-[#242424] rounded-md p-2.5 space-y-2">
           <ScreenshotCoordinatePicker
             onAssignSoru={(coords, hex) =>
               handleUpdate({ soruCoords: coords, soruColor: hex })
@@ -281,52 +246,51 @@ export const ConfigurableMacroCard: React.FC<ConfigurableMacroCardProps> = ({
               handleUpdate({ portalCoords: coords, portalColor: hex })
             }
           />
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* 4. Action Bar Underneath: [ run ] [ stop ] [ view code ] */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] font-mono">
+      {/* 3. Actions Row */}
+      <div className="flex items-center justify-between pt-2 border-t border-[#1F1F1F]">
         <div className="flex items-center gap-2">
           {isExecuting ? (
             <button
               onClick={onStopScript}
-              className="cursor-pointer font-bold text-rose-600 dark:text-rose-400 hover:underline min-h-[36px] flex items-center py-1.5 px-2.5 whitespace-nowrap shrink-0"
+              className="cursor-pointer px-3 py-1.5 rounded-md bg-[#EF4444]/20 border border-[#EF4444]/60 text-[#EF4444] font-semibold text-xs flex items-center gap-1.5 transition-colors"
             >
-              [ ■ stop ]
+              <Square className="w-3 h-3 fill-current" />
+              <span>Stop</span>
             </button>
           ) : (
             <button
               onClick={() => onRunScript(liveScript, currentLanguage)}
-              className="cursor-pointer font-bold text-[var(--accent-primary)] hover:underline min-h-[36px] flex items-center py-1.5 px-2.5 whitespace-nowrap shrink-0"
+              className="cursor-pointer px-3 py-1.5 rounded-md bg-[#1C1C1C] hover:bg-[#242424] border border-[#333333] hover:border-[#525252] text-[#F2F2F2] font-semibold text-xs flex items-center gap-1.5 transition-colors active:scale-95"
             >
-              [ ▶ run ]
+              <Play className="w-3 h-3 fill-current" />
+              <span>Run Script</span>
             </button>
           )}
 
           <button
             onClick={() => setShowCode(!showCode)}
-            className="cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:underline min-h-[36px] flex items-center py-1.5 px-2.5 whitespace-nowrap shrink-0"
+            className="cursor-pointer px-2.5 py-1.5 rounded-md border border-[#242424] bg-[#101010] hover:bg-[#1A1A1A] text-[#A3A3A3] hover:text-[#F2F2F2] text-xs flex items-center gap-1"
           >
-            [ {showCode ? 'hide code' : 'view code'} ]
+            <Code className="w-3 h-3" />
+            <span>{showCode ? 'Hide' : 'Code'}</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline min-h-[36px] flex items-center py-1.5 px-2.5 whitespace-nowrap shrink-0"
-          >
-            [ {copied ? 'copied!' : 'copy'} ]
-          </button>
-          <span className="text-[10px] text-[var(--text-muted)] uppercase whitespace-nowrap shrink-0">
-            target: {currentLanguage}
-          </span>
-        </div>
+        <button
+          onClick={handleCopy}
+          className="cursor-pointer px-2.5 py-1.5 rounded-md text-[#737373] hover:text-[#F2F2F2] text-xs flex items-center gap-1"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
       </div>
 
       {/* Live Code Preview Drawer if opened */}
       {showCode && (
-        <div className="mt-2 p-2.5 bg-[var(--code-bg)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-primary)] overflow-x-auto leading-relaxed select-text">
+        <div className="p-3 bg-[#080808] border border-[#222222] rounded-md text-[11px] font-mono text-[#F2F2F2] overflow-x-auto leading-relaxed select-text">
           <pre>{liveScript}</pre>
         </div>
       )}

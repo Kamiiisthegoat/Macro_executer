@@ -4,115 +4,168 @@
 
 @layer base {
   :root {
-    --font-mono: 'JetBrains Mono', 'Courier Prime', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  }
-
-  * {
-    font-family: var(--font-mono) !important;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   body {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     letter-spacing: -0.01em;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
   }
 }
 
-/* 1. Clean Paper Light Theme (Default, typewriter paper feel) */
-.theme-clean-light {
-  --bg-primary: #f8f8f8;
-  --bg-surface: #efefef;
-  --bg-surface-elevated: #e5e5e5;
-  --bg-surface-hover: #dadada;
-  --border-subtle: #d0d0d0;
-  --border-strong: #1a1a1a;
-  --text-primary: #1a1a1a;
-  --text-secondary: #404040;
+/* 1. Matte Obsidian Theme (Default — inspired by SacredStep overlay utility window) */
+.theme-matte-obsidian {
+  --bg-primary: #0a0a0a;
+  --bg-window: #0e0e0e;
+  --bg-surface: #141414;
+  --bg-surface-elevated: #1a1a1a;
+  --bg-surface-hover: #222222;
+  --border-subtle: #242424;
+  --border-strong: #383838;
+  --border-active: #525252;
+  --text-primary: #f2f2f2;
+  --text-secondary: #a3a3a3;
   --text-muted: #737373;
-  --accent-primary: #1a1a1a;
-  --accent-secondary: #000000;
-  --accent-subtle: rgba(26, 26, 26, 0.08);
-  --accent-glow: rgba(26, 26, 26, 0.2);
-  --code-bg: #ffffff;
-  --terminal-bg: #f2f2f2;
-  --badge-bg: #e2e2e2;
+  --accent-primary: #f2f2f2;
+  --accent-secondary: #d97706;
+  --accent-danger: #ef4444;
+  --accent-success: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-amber-bg: rgba(245, 158, 11, 0.08);
+  --accent-amber-border: #452715;
+  --code-bg: #0d0d0d;
+  --terminal-bg: #080808;
+  --badge-bg: #1c1c1c;
 }
 
-/* 2. Minimalist Dark Theme */
+/* 2. Clean Paper Light Theme */
+.theme-clean-light {
+  --bg-primary: #f8f8f8;
+  --bg-window: #f2f2f2;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f0f0f0;
+  --bg-surface-hover: #e5e5e5;
+  --border-subtle: #e0e0e0;
+  --border-strong: #1a1a1a;
+  --border-active: #333333;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #737373;
+  --accent-primary: #1a1a1a;
+  --accent-secondary: #b45309;
+  --accent-danger: #dc2626;
+  --accent-success: #059669;
+  --accent-amber: #d97706;
+  --accent-amber-bg: rgba(217, 119, 6, 0.08);
+  --accent-amber-border: #fcd34d;
+  --code-bg: #ffffff;
+  --terminal-bg: #f4f4f4;
+  --badge-bg: #e5e5e5;
+}
+
+/* 3. Minimalist Dark Theme */
 .theme-minimal-dark {
   --bg-primary: #111215;
+  --bg-window: #14161a;
   --bg-surface: #18191e;
   --bg-surface-elevated: #22242b;
   --bg-surface-hover: #2a2c35;
   --border-subtle: #272a33;
   --border-strong: #454955;
+  --border-active: #64748b;
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
   --accent-primary: #f3f4f6;
   --accent-secondary: #9ca3af;
-  --accent-subtle: rgba(255, 255, 255, 0.08);
-  --accent-glow: rgba(255, 255, 255, 0.2);
+  --accent-danger: #f87171;
+  --accent-success: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-amber-bg: rgba(251, 191, 36, 0.08);
+  --accent-amber-border: #78350f;
   --code-bg: #0d0e11;
   --terminal-bg: #0b0c0f;
   --badge-bg: #22242b;
 }
 
-/* 3. Cyber Neon Theme */
+/* 4. Cyber Neon Theme */
 .theme-cyber-neon {
   --bg-primary: #07090e;
+  --bg-window: #0a0d14;
   --bg-surface: #0e121a;
   --bg-surface-elevated: #151b26;
   --bg-surface-hover: #1f2737;
   --border-subtle: #1e283b;
   --border-strong: #06b6d4;
+  --border-active: #22d3ee;
   --text-primary: #06b6d4;
   --text-secondary: #22d3ee;
   --text-muted: #64748b;
   --accent-primary: #06b6d4;
   --accent-secondary: #a855f7;
-  --accent-subtle: rgba(6, 182, 212, 0.15);
-  --accent-glow: rgba(6, 182, 212, 0.45);
+  --accent-danger: #f43f5e;
+  --accent-success: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-amber-bg: rgba(245, 158, 11, 0.12);
+  --accent-amber-border: #b45309;
   --code-bg: #05070a;
   --terminal-bg: #030508;
   --badge-bg: rgba(6, 182, 212, 0.12);
 }
 
-/* 4. Retro Terminal / Matrix Hacker Theme */
+/* 5. Retro Terminal / Matrix Hacker Theme */
 .theme-retro-terminal {
   --bg-primary: #030603;
+  --bg-window: #040904;
   --bg-surface: #060e06;
   --bg-surface-elevated: #0b180b;
   --bg-surface-hover: #102410;
   --border-subtle: #143514;
   --border-strong: #22c55e;
+  --border-active: #4ade80;
   --text-primary: #4ade80;
   --text-secondary: #22c55e;
   --text-muted: #15803d;
   --accent-primary: #22c55e;
   --accent-secondary: #86efac;
-  --accent-subtle: rgba(34, 197, 94, 0.15);
-  --accent-glow: rgba(34, 197, 94, 0.4);
+  --accent-danger: #ef4444;
+  --accent-success: #22c55e;
+  --accent-amber: #eab308;
+  --accent-amber-bg: rgba(234, 179, 8, 0.1);
+  --accent-amber-border: #713f12;
   --code-bg: #020402;
   --terminal-bg: #010301;
   --badge-bg: #071507;
 }
 
-/* 5. Glassmorphic Frost Theme */
+/* 6. Glassmorphic Frost Theme */
 .theme-glass-frost {
   --bg-primary: #0a0e17;
-  --bg-surface: rgba(18, 26, 42, 0.65);
-  --bg-surface-elevated: rgba(30, 41, 66, 0.6);
-  --bg-surface-hover: rgba(45, 60, 92, 0.6);
+  --bg-window: #0c121e;
+  --bg-surface: rgba(18, 26, 42, 0.75);
+  --bg-surface-elevated: rgba(30, 41, 66, 0.7);
+  --bg-surface-hover: rgba(45, 60, 92, 0.7);
   --border-subtle: rgba(255, 255, 255, 0.15);
   --border-strong: rgba(147, 197, 253, 0.45);
+  --border-active: rgba(255, 255, 255, 0.4);
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --accent-primary: #38bdf8;
   --accent-secondary: #818cf8;
-  --accent-subtle: rgba(56, 189, 248, 0.15);
-  --accent-glow: rgba(56, 189, 248, 0.35);
+  --accent-danger: #fb7185;
+  --accent-success: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-amber-bg: rgba(251, 191, 36, 0.12);
+  --accent-amber-border: rgba(251, 191, 36, 0.35);
   --code-bg: rgba(6, 10, 20, 0.85);
   --terminal-bg: rgba(4, 7, 15, 0.95);
   --badge-bg: rgba(255, 255, 255, 0.08);
@@ -124,23 +177,66 @@
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* Typewriter dashed and text-bracket helpers */
-.typewriter-border {
-  border-style: solid;
-}
-
-/* Custom scrollbar for mobile drawers & code boxes */
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 100, 100, 0.3);
-  border-radius: 0;
+  background: rgba(120, 120, 120, 0.25);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 100, 100, 0.5);
+  background: rgba(120, 120, 120, 0.45);
+}
+
+/* Range slider styling for Matte Obsidian aesthetic */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #2a2a2a;
+  border-radius: 2px;
+}
+input[type=range]::-webkit-slider-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #f2f2f2;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  transition: transform 0.1s ease;
+}
+input[type=range]::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #2a2a2a;
+  border-radius: 2px;
+}
+input[type=range]::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #f2f2f2;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  border: none;
 }
