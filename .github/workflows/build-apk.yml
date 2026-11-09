@@ -49,9 +49,80 @@ jobs:
           rm -rf android
           npx cap add android
 
-      - name: Fix Kotlin Duplicate Class & Gradle Memory Conflicts
+      - name: Inject Native Kotlin & C++ Engines (QuickJS + Luau)
+        run: |
+          PKG_DIR="android/app/src/main/java/com/custom/macroexecutor"
+          CPP_DIR="android/app/src/main/cpp"
+          RES_XML="android/app/src/main/res/xml"
+          mkdir -p "$PKG_DIR" "$CPP_DIR" "$RES_XML"
+
+          cp native-addon/MacroAccessibilityService.kt "$PKG_DIR/"
+          cp native-addon/MacroBridgePlugin.kt "$PKG_DIR/"
+          cp native-addon/native-bridge.cpp "$CPP_DIR/"
+
+          git clone --depth 1 https://github.com "$CPP_DIR/quickjs"
+          git clone --depth 1 https://github.com "$CPP_DIR/luau"
+
+          cat << 'EOF' > "$CPP_DIR/CMakeLists.txt"
+          cmake_minimum_required(VERSION 3.22.1)
+          project("macro_engine")
+          set(CMAKE_CXX_STANDARD 17)
+
+          file(GLOB LUAU_VM_SRC "luau/VM/src/*.cpp")
+          file(GLOB LUAU_COMP_SRC "luau/Compiler/src/*.cpp")
+          file(GLOB LUAU_AST_SRC "luau/Ast/src/*.cpp")
+
+          include_directories(
+              ${CMAKE_CURRENT_SOURCE_DIR}
+              luau/VM/include
+              luau/Compiler/include
+              luau/Ast/include
+              luau/Common/include
+          )
+
+          add_library(macro_engine SHARED
+              native-bridge.cpp
+              quickjs/quickjs.c
+              quickjs/libregexp.c
+              quickjs/libunicode.c
+              quickjs/cutils.c
+              quickjs/quickjs-libc.c
+              ${LUAU_VM_SRC}
+              ${LUAU_COMP_SRC}
+              ${LUAU_AST_SRC}
+          )
+
+          target_compile_definitions(macro_engine PRIVATE CONFIG_VERSION="2024-01-13")
+          target_link_libraries(macro_engine android log m dl)
+          EOF
+
+          cat << 'EOF' > "$RES_XML/accessibility_service_config.xml"
+          <?xml version="1.0" encoding="utf-8"?>
+          <accessibility-service xmlns:android="http://android.com"
+              android:accessibilityEventTypes="typeAllMask"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:canPerformGestures="true"
+              android:canRetrieveWindowContent="true"
+              android:notificationTimeout="100" />
+          EOF
+
+          sed -i 's|</application>|<service android:name=".MacroAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application>|' android/app/src/main/AndroidManifest.xml
+
+      - name: Configure Gradle for Kotlin, Coroutines & CMake NDK
         run: |
           cat << 'EOF' >> android/app/build.gradle
+
+          android {
+              externalNativeBuild {
+                  cmake {
+                      path "src/main/cpp/CMakeLists.txt"
+                  }
+              }
+          }
+
+          dependencies {
+              implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+          }
 
           configurations.all {
               resolutionStrategy {
@@ -61,7 +132,7 @@ jobs:
               }
           }
           EOF
-          echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> android/gradle.properties
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
 
@@ -76,4 +147,3 @@ jobs:
         with:
           name: MacroExecutor-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
- 
