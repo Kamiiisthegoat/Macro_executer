@@ -60,6 +60,9 @@ jobs:
           cp native-addon/MacroBridgePlugin.kt "$PKG_DIR/"
           cp native-addon/native-bridge.cpp "$CPP_DIR/"
 
+          sed -i 's/JS_ToFloat64(ctx, &x, argv); JS_ToFloat64(ctx, &y, argv);/JS_ToFloat64(ctx, \&x, argv[0]); JS_ToFloat64(ctx, \&y, argv[1]);/' "$CPP_DIR/native-bridge.cpp"
+          sed -i 's/JS_ToInt32(ctx, &ms, argv);/JS_ToInt32(ctx, \&ms, argv[0]);/' "$CPP_DIR/native-bridge.cpp"
+
           GH="https://github.com"
           git clone --depth 1 "${GH}/bellard/quickjs.git" "$CPP_DIR/quickjs"
           git clone --depth 1 "${GH}/luau-lang/luau.git" "$CPP_DIR/luau"
@@ -69,32 +72,35 @@ jobs:
           project("macro_engine")
           set(CMAKE_CXX_STANDARD 17)
 
-          file(GLOB LUAU_VM_SRC "luau/VM/src/*.cpp")
-          file(GLOB LUAU_COMP_SRC "luau/Compiler/src/*.cpp")
-          file(GLOB LUAU_AST_SRC "luau/Ast/src/*.cpp")
+          set(LUAU_BUILD_CLI OFF CACHE BOOL "" FORCE)
+          set(LUAU_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+          set(LUAU_BUILD_WEB OFF CACHE BOOL "" FORCE)
+          set(LUAU_WERROR OFF CACHE BOOL "" FORCE)
+          add_subdirectory(luau)
 
-          include_directories(
-              ${CMAKE_CURRENT_SOURCE_DIR}
-              luau/VM/include
-              luau/Compiler/include
-              luau/Ast/include
-              luau/Common/include
-          )
-
-          add_library(macro_engine SHARED
-              native-bridge.cpp
+          add_library(quickjs STATIC
               quickjs/quickjs.c
               quickjs/libregexp.c
               quickjs/libunicode.c
               quickjs/cutils.c
               quickjs/dtoa.c
-              ${LUAU_VM_SRC}
-              ${LUAU_COMP_SRC}
-              ${LUAU_AST_SRC}
+          )
+          target_compile_definitions(quickjs PRIVATE CONFIG_VERSION="2024-01-13" _GNU_SOURCE)
+          target_include_directories(quickjs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+          add_library(macro_engine SHARED
+              native-bridge.cpp
           )
 
-          target_compile_definitions(macro_engine PRIVATE CONFIG_VERSION="2024-01-13")
-          target_link_libraries(macro_engine android log m dl)
+          target_link_libraries(macro_engine
+              quickjs
+              Luau.Compiler
+              Luau.VM
+              android
+              log
+              m
+              dl
+          )
           EOF
 
           XML_NS="http://android.com"
