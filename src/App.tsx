@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 import {
   MacroLanguage,
   MacroLog,
@@ -19,6 +20,9 @@ import { FloatingWidgetSimulator } from './components/FloatingWidgetSimulator';
 import { ScreenshotCoordinatePicker } from './components/ScreenshotCoordinatePicker';
 import { STARTER_TEMPLATES } from './data/templates';
 import { PRO_SUITES } from './data/proSuites';
+
+// Direct Capacitor Plugin Binding
+const MacroBridge = registerPlugin<any>('MacroBridge');
 
 const DEFAULT_CODE_BY_LANG: Record<MacroLanguage, string> = {
   javascript: `// Universal JavaScript Macro Routine
@@ -174,7 +178,7 @@ export default function App() {
     };
   }, []);
 
-  // Instantiated Macro Runner
+  // Instantiated Macro Runner (for web sandbox simulation)
   const macroRunner = useMemo(() => {
     return new MacroRunner({
       onLog: (log) => {
@@ -214,25 +218,101 @@ export default function App() {
   // Handle language switch
   const handleLanguageChange = (lang: MacroLanguage) => {
     setCurrentLanguage(lang);
-    // If current code is the default of previous language, replace with new default
     const previousDefault = DEFAULT_CODE_BY_LANG[currentLanguage];
     if (code.trim() === previousDefault.trim() || code.trim() === '') {
       setCode(DEFAULT_CODE_BY_LANG[lang]);
     }
   };
 
-  // Run macro handler
-  const handleRunMacro = async () => {
+  /**
+   * Primary Macro Execution Router:
+   * When Capacitor.isNativePlatform() is true, route ALL languages directly to MacroBridge.executeMacro()
+   * and print res.output into the console terminal.
+   * Never execute C++, Kotlin, or Luau in eval() or new Function().
+   */
+  const executeMacroWithRouting = async (scriptCode: string, lang: MacroLanguage) => {
     if (isExecuting) return;
     setElapsedMs(0);
-    // Route to native bridge for QuickJS / Luau if in native mode
-    if (bridgeStatus.isNative && currentLanguage === 'quickjs') {
-      await nativeExecutorBridge.runQuickJS(code);
-    } else if (bridgeStatus.isNative && currentLanguage === 'luau') {
-      await nativeExecutorBridge.runLuau(code);
+
+    const isNative = Capacitor.isNativePlatform() || bridgeStatus.isSimulatedNative;
+
+    if (isNative) {
+      setIsExecuting(true);
+      startTimeRef.current = performance.now();
+      const runTimer = () => {
+        setElapsedMs(performance.now() - startTimeRef.current);
+        timerFrameRef.current = requestAnimationFrame(runTimer);
+      };
+      timerFrameRef.current = requestAnimationFrame(runTimer);
+
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          elapsedMs: 0,
+          level: 'info',
+          message: `Starting execution [Engine: ${lang.toUpperCase()}] via native MacroBridge...`
+        }
+      ]);
+
+      try {
+        const plugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+        const res = await plugin.executeMacro({
+          language: lang,
+          code: scriptCode
+        });
+
+        const finalElapsed = performance.now() - startTimeRef.current;
+        const outputText = res?.output !== undefined
+          ? (typeof res.output === 'string' ? res.output : JSON.stringify(res.output, null, 2))
+          : `[MacroBridge] ${lang.toUpperCase()} routine executed successfully.`;
+
+        setLogs((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            elapsedMs: finalElapsed,
+            level: 'success',
+            message: outputText
+          }
+        ]);
+      } catch (err: unknown) {
+        const finalElapsed = performance.now() - startTimeRef.current;
+        const errorMsg =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as any).message)
+            : String(err);
+
+        setLogs((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            elapsedMs: finalElapsed,
+            level: 'error',
+            message: `Native MacroBridge Error: ${errorMsg}`
+          }
+        ]);
+      } finally {
+        setIsExecuting(false);
+        if (timerFrameRef.current) {
+          cancelAnimationFrame(timerFrameRef.current);
+          timerFrameRef.current = null;
+        }
+      }
+    } else {
+      // In Web preview browser sandbox (no native platform):
+      await macroRunner.execute(scriptCode, lang);
     }
-    // Always trigger simulator runner for visual feedback & timings
-    await macroRunner.execute(code, currentLanguage);
+  };
+
+  // Run macro handler from Home workspace
+  const handleRunMacro = async () => {
+    await executeMacroWithRouting(code, currentLanguage);
   };
 
   // Stop macro handler
@@ -305,9 +385,56 @@ export default function App() {
     nativeExecutorBridge.toggleFloatingOverlay(next);
   };
 
+  // Trigger Android Accessibility Settings
+  const handleEnableAccessibility = async () => {
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        elapsedMs: 0,
+        level: 'info',
+        message: '[MacroBridge] Requesting openAccessibilitySettings()...'
+      }
+    ]);
+
+    try {
+      const plugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+      const res = await plugin.openAccessibilitySettings();
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          elapsedMs: 0,
+          level: 'success',
+          message: res?.message || '[MacroBridge] Accessibility settings intent dispatched.'
+        }
+      ]);
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as any).message)
+          : String(err);
+
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          elapsedMs: 0,
+          level: 'error',
+          message: `[MacroBridge] Accessibility Error: ${errorMsg}`
+        }
+      ]);
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] max-w-full overflow-x-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col antialiased select-none font-mono">
-      {/* Top App Bar */}
+      {/* Top App Bar with Native Status & Accessibility Trigger */}
       <TopBar
         bridgeStatus={bridgeStatus}
         onToggleSimulatedNative={handleToggleSimulatedNative}
@@ -316,6 +443,7 @@ export default function App() {
         onOpenThemeSwitcher={() => setIsThemeModalOpen(true)}
         onOpenImagePicker={() => setIsImagePickerModalOpen(true)}
         activeThemeName={currentTheme}
+        onEnableAccessibility={handleEnableAccessibility}
       />
 
       {/* Main Content Area */}
@@ -367,7 +495,7 @@ export default function App() {
             onRunScript={async (script, lang) => {
               setCode(script);
               setCurrentLanguage(lang);
-              await macroRunner.execute(script, lang);
+              await executeMacroWithRouting(script, lang);
             }}
             onStopScript={handleStopMacro}
           />

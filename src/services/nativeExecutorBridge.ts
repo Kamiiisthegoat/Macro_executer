@@ -1,4 +1,39 @@
+import { registerPlugin, Capacitor } from '@capacitor/core';
 import { MacroPayload, MacroLog } from '../types/macro';
+
+export interface MacroBridgePlugin {
+  executeMacro(options: { language: string; code: string }): Promise<{ success?: boolean; output?: string; [key: string]: any }>;
+  openAccessibilitySettings(): Promise<{ success?: boolean; opened?: boolean; [key: string]: any }>;
+  checkAccessibilityPermission?(): Promise<{ granted: boolean; [key: string]: any }>;
+  setOverlayVisible?(options: { visible: boolean }): Promise<{ success: boolean; [key: string]: any }>;
+  dispatchGestures?(payload: MacroPayload): Promise<{ dispatched: boolean; count: number }>;
+}
+
+/**
+ * Direct Capacitor Plugin Binding for native Android APK.
+ * When running as native APK, Capacitor routes directly to com.acroscript.MacroBridge (or registered native plugin).
+ * On web preview, provides a non-blocking mock fallback.
+ */
+export const MacroBridge = registerPlugin<MacroBridgePlugin>('MacroBridge', {
+  web: () => ({
+    async executeMacro(options: { language: string; code: string }) {
+      return {
+        success: true,
+        output: `[MacroBridge] Executed ${options.language} macro (${options.code.length} bytes). Running in Web preview.`
+      };
+    },
+    async openAccessibilitySettings() {
+      return {
+        success: true,
+        opened: false,
+        message: 'Android Accessibility settings are accessible when running as a native Android APK.'
+      };
+    },
+    async setOverlayVisible(options: { visible: boolean }) {
+      return { success: true, visible: options.visible };
+    }
+  })
+});
 
 export interface BridgeStatus {
   isNative: boolean;
@@ -22,8 +57,14 @@ class NativeExecutorBridgeService {
    */
   public isNativePlatform(): boolean {
     if (this.simulatedNativeMode) return true;
-    
-    // Check global Capacitor object injected by Android WebView container
+    try {
+      if (typeof Capacitor !== 'undefined' && typeof Capacitor.isNativePlatform === 'function') {
+        return Capacitor.isNativePlatform();
+      }
+    } catch {
+      // Fallback check
+    }
+
     const win = typeof window !== 'undefined' ? (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }) : null;
     if (win?.Capacitor && typeof win.Capacitor.isNativePlatform === 'function') {
       try {
@@ -45,7 +86,7 @@ class NativeExecutorBridgeService {
       elapsedMs: 0,
       level: 'info',
       message: enabled
-        ? 'Native Android APK Simulation Activated: Capacitor JNI & AccessibilityService mocks ready.'
+        ? 'Native Android APK Simulation Activated: MacroBridge plugin calls enabled.'
         : 'Reverted to Web Sandbox Mode.'
     });
   }
@@ -76,149 +117,55 @@ class NativeExecutorBridgeService {
     };
   }
 
-  private emitLog(log: Omit<MacroLog, 'id'>): void {
+  public emitLog(log: Omit<MacroLog, 'id'>): void {
     this.logListeners.forEach(listener => listener(log));
   }
 
   /**
-   * Routes to native C++ QuickJS JNI binding on Android, or falls back to Web Worker in browser.
+   * Direct invocation of Android Accessibility Settings via MacroBridge plugin
    */
-  public async runQuickJS(script: string): Promise<{ success: boolean; result?: unknown; executionTimeMs: number }> {
-    const startTime = performance.now();
-    const isNative = this.isNativePlatform();
-
+  public async openAccessibilitySettings(): Promise<{ success: boolean; message?: string }> {
     this.emitLog({
       timestamp: Date.now(),
       elapsedMs: 0,
       level: 'info',
-      message: isNative
-        ? '[Native QuickJS JNI] Invoking libquickjs_android.so through JNI binding'
-        : '[Web Worker QuickJS Sandbox] Initializing embedded JavaScript context'
+      message: '[MacroBridge] Requesting Android Accessibility Settings...'
     });
 
-    if (isNative && !this.simulatedNativeMode) {
-      // Real Android Capacitor Plugin call
-      const win = window as unknown as {
-        Capacitor?: {
-          Plugins?: {
-            QuickJSNativeBridge?: {
-              execute: (options: { code: string }) => Promise<{ success: boolean; output: unknown }>;
-            };
-          };
-        };
-      };
-
-      if (win.Capacitor?.Plugins?.QuickJSNativeBridge) {
-        try {
-          const res = await win.Capacitor.Plugins.QuickJSNativeBridge.execute({ code: script });
-          const elapsed = performance.now() - startTime;
-          return { success: res.success, result: res.output, executionTimeMs: elapsed };
-        } catch (err) {
-          const elapsed = performance.now() - startTime;
-          this.emitLog({
-            timestamp: Date.now(),
-            elapsedMs: elapsed,
-            level: 'error',
-            message: `Native QuickJS JNI Exception: ${err instanceof Error ? err.message : String(err)}`
-          });
-          return { success: false, executionTimeMs: elapsed };
-        }
-      }
+    try {
+      // Check if native plugin is available via registered plugin or window.Capacitor
+      const nativePlugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+      const res = await nativePlugin.openAccessibilitySettings();
+      
+      this.emitLog({
+        timestamp: Date.now(),
+        elapsedMs: 0,
+        level: 'success',
+        message: '[MacroBridge] Accessibility settings intent triggered successfully.'
+      });
+      return { success: true, message: res?.message };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emitLog({
+        timestamp: Date.now(),
+        elapsedMs: 0,
+        level: 'error',
+        message: `[MacroBridge Exception] Failed to open accessibility settings: ${msg}`
+      });
+      return { success: false, message: msg };
     }
-
-    // In-browser preview execution simulation
-    const elapsed = performance.now() - startTime;
-    return {
-      success: true,
-      result: 'QuickJS parsed and evaluated safely.',
-      executionTimeMs: elapsed
-    };
   }
 
   /**
-   * Routes to native C++ Luau VM on Android, or falls back to in-browser Lua logic simulator in web preview.
+   * Executes macro through MacroBridge plugin
    */
-  public async runLuau(script: string): Promise<{ success: boolean; result?: unknown; executionTimeMs: number }> {
-    const startTime = performance.now();
-    const isNative = this.isNativePlatform();
-
-    this.emitLog({
-      timestamp: Date.now(),
-      elapsedMs: 0,
-      level: 'info',
-      message: isNative
-        ? '[Native Luau VM] Passing bytecode to libluau_native_core.so NDK module'
-        : '[Web Luau Simulator] Validating typed Lua syntax & AST'
-    });
-
-    if (isNative && !this.simulatedNativeMode) {
-      const win = window as unknown as {
-        Capacitor?: {
-          Plugins?: {
-            LuauNativeBridge?: {
-              executeLuau: (options: { code: string }) => Promise<{ success: boolean; output: unknown }>;
-            };
-          };
-        };
-      };
-
-      if (win.Capacitor?.Plugins?.LuauNativeBridge) {
-        try {
-          const res = await win.Capacitor.Plugins.LuauNativeBridge.executeLuau({ code: script });
-          const elapsed = performance.now() - startTime;
-          return { success: res.success, result: res.output, executionTimeMs: elapsed };
-        } catch (err) {
-          const elapsed = performance.now() - startTime;
-          return { success: false, executionTimeMs: elapsed };
-        }
-      }
-    }
-
-    const elapsed = performance.now() - startTime;
-    return {
-      success: true,
-      result: 'Luau syntax compiled and executed with 0 runtime errors.',
-      executionTimeMs: elapsed
-    };
-  }
-
-  /**
-   * Sends touch/gesture arrays to Android AccessibilityService (`android.accessibilityservice.GestureDescription`).
-   */
-  public async dispatchNativeKotlinMacro(config: MacroPayload): Promise<{ dispatched: boolean; actionCount: number }> {
-    const isNative = this.isNativePlatform();
-
-    this.emitLog({
-      timestamp: Date.now(),
-      elapsedMs: 0,
-      level: 'info',
-      message: isNative
-        ? `[AccessibilityService] Dispatching ${config.actions.length} gestures to Android OS window manager`
-        : `[Web Preview] Simulated AccessibilityService gesture queue: ${config.actions.length} gestures dispatched`
-    });
-
-    if (isNative && !this.simulatedNativeMode) {
-      const win = window as unknown as {
-        Capacitor?: {
-          Plugins?: {
-            AndroidAccessibilityMacro?: {
-              dispatchGestures: (payload: MacroPayload) => Promise<{ dispatched: boolean; count: number }>;
-            };
-          };
-        };
-      };
-
-      if (win.Capacitor?.Plugins?.AndroidAccessibilityMacro) {
-        try {
-          const res = await win.Capacitor.Plugins.AndroidAccessibilityMacro.dispatchGestures(config);
-          return { dispatched: res.dispatched, actionCount: res.count };
-        } catch {
-          return { dispatched: false, actionCount: 0 };
-        }
-      }
-    }
-
-    return { dispatched: true, actionCount: config.actions.length };
+  public async executeNativeMacro(language: string, code: string): Promise<{ success: boolean; output: string }> {
+    const nativePlugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+    const res = await nativePlugin.executeMacro({ language, code });
+    const output = res?.output !== undefined
+      ? (typeof res.output === 'string' ? res.output : JSON.stringify(res.output, null, 2))
+      : 'Native macro execution completed.';
+    return { success: res?.success !== false, output };
   }
 
   /**
@@ -244,20 +191,11 @@ class NativeExecutorBridgeService {
     this.overlayListeners.forEach(listener => listener(enabled));
 
     if (isNative && !this.simulatedNativeMode) {
-      const win = window as unknown as {
-        Capacitor?: {
-          Plugins?: {
-            FloatingOverlayPlugin?: {
-              setOverlayVisible: (options: { visible: boolean }) => Promise<{ success: boolean }>;
-            };
-          };
-        };
-      };
-
-      if (win.Capacitor?.Plugins?.FloatingOverlayPlugin) {
+      const nativePlugin = (window as any)?.Capacitor?.Plugins?.MacroBridge || MacroBridge;
+      if (typeof nativePlugin?.setOverlayVisible === 'function') {
         try {
-          const res = await win.Capacitor.Plugins.FloatingOverlayPlugin.setOverlayVisible({ visible: enabled });
-          return res.success;
+          const res = await nativePlugin.setOverlayVisible({ visible: enabled });
+          return !!res?.success;
         } catch {
           return false;
         }

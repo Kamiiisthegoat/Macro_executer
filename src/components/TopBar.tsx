@@ -9,6 +9,7 @@ interface TopBarProps {
   onOpenThemeSwitcher: () => void;
   onOpenImagePicker: () => void;
   activeThemeName: string;
+  onEnableAccessibility: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -18,7 +19,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   overlayActive,
   onOpenThemeSwitcher,
   onOpenImagePicker,
-  activeThemeName
+  activeThemeName,
+  onEnableAccessibility
 }) => {
   const [showStatusModal, setShowStatusModal] = useState<boolean>(false);
 
@@ -31,17 +33,36 @@ export const TopBar: React.FC<TopBarProps> = ({
             AcroScript.sh
           </span>
 
-          {/* Engine Status Text Bracket */}
+          {/* Native Engine Connected or Sandbox Status */}
+          {bridgeStatus.isNative ? (
+            <span
+              onClick={() => setShowStatusModal(true)}
+              className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 border border-emerald-500/30 whitespace-nowrap shrink-0 cursor-pointer"
+              title="Native Android container detected - click for details"
+            >
+              NATIVE ENGINE: CONNECTED
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowStatusModal(true)}
+              className="cursor-pointer text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors underline whitespace-nowrap shrink-0"
+              title="Inspect Runtime Environment"
+            >
+              [
+              {bridgeStatus.isSimulatedNative
+                ? 'status:simulated'
+                : 'status:sandbox'}
+              ]
+            </button>
+          )}
+
+          {/* Enable Accessibility Trigger Button */}
           <button
-            onClick={() => setShowStatusModal(true)}
-            className="cursor-pointer text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors underline whitespace-nowrap shrink-0"
-            title="Inspect Runtime Environment"
+            onClick={onEnableAccessibility}
+            className="cursor-pointer text-[10px] font-bold py-1 px-1.5 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-all whitespace-nowrap shrink-0"
+            title="Open Android Accessibility Settings via MacroBridge.openAccessibilitySettings()"
           >
-            [
-            {bridgeStatus.isNative || bridgeStatus.isSimulatedNative
-              ? 'status:native'
-              : 'status:sandbox'}
-            ]
+            [ enable accessibility ]
           </button>
         </div>
 
@@ -97,14 +118,32 @@ export const TopBar: React.FC<TopBarProps> = ({
             </div>
 
             <div className="space-y-2 text-[11px] text-[var(--text-secondary)] leading-relaxed">
-              <p>Capacitor Android Container / JNI Bridge Architecture</p>
+              <p>Capacitor Android Container / MacroBridge Plugin Status</p>
 
               <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1 font-mono text-[10px]">
-                <div>runtime: {bridgeStatus.isNative ? 'ANDROID_CONTAINER' : bridgeStatus.isSimulatedNative ? 'SIMULATED_ANDROID_APK' : 'WEB_SANDBOX_WORKER'}</div>
-                <div>accessibility_service: BOUND</div>
-                <div>quickjs_jni_so: READY</div>
+                <div>
+                  status:{' '}
+                  {bridgeStatus.isNative ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">NATIVE ENGINE: CONNECTED</span>
+                  ) : (
+                    <span>{bridgeStatus.isSimulatedNative ? 'SIMULATED_ANDROID_APK' : 'WEB_SANDBOX_WORKER'}</span>
+                  )}
+                </div>
+                <div>plugin_id: MacroBridge</div>
+                <div>accessibility_service: {bridgeStatus.isNative ? 'ACTIVE_BINDING' : 'READY'}</div>
                 <div>floating_alert_window: READY</div>
               </div>
+
+              {/* Direct Open Accessibility Button */}
+              <button
+                onClick={() => {
+                  onEnableAccessibility();
+                  setShowStatusModal(false);
+                }}
+                className="w-full py-1.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] font-bold cursor-pointer transition-colors"
+              >
+                [ OPEN ACCESSIBILITY SETTINGS ]
+              </button>
 
               {/* Simulation Mode Toggle */}
               <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
@@ -113,7 +152,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     Simulate Android APK
                   </span>
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    Routes calls via mock JNI bridge
+                    Routes calls via MacroBridge plugin
                   </span>
                 </div>
                 <button
