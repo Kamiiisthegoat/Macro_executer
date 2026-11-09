@@ -60,8 +60,9 @@ jobs:
           cp native-addon/MacroBridgePlugin.kt "$PKG_DIR/"
           cp native-addon/native-bridge.cpp "$CPP_DIR/"
 
-          git clone --depth 1 https://github.com "$CPP_DIR/quickjs"
-          git clone --depth 1 https://github.com "$CPP_DIR/luau"
+          GH="https://github.com"
+          git clone --depth 1 "${GH}/bellard/quickjs.git" "$CPP_DIR/quickjs"
+          git clone --depth 1 "${GH}/luau-lang/luau.git" "$CPP_DIR/luau"
 
           cat << 'EOF' > "$CPP_DIR/CMakeLists.txt"
           cmake_minimum_required(VERSION 3.22.1)
@@ -96,9 +97,10 @@ jobs:
           target_link_libraries(macro_engine android log m dl)
           EOF
 
-          cat << 'EOF' > "$RES_XML/accessibility_service_config.xml"
+          XML_NS="http://android.com"
+          cat << EOF > "$RES_XML/accessibility_service_config.xml"
           <?xml version="1.0" encoding="utf-8"?>
-          <accessibility-service xmlns:android="http://android.com"
+          <accessibility-service xmlns:android="${XML_NS}"
               android:accessibilityEventTypes="typeAllMask"
               android:accessibilityFeedbackType="feedbackGeneric"
               android:canPerformGestures="true"
