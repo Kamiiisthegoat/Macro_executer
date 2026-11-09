@@ -1,0 +1,6 @@
+{
+  "name": "AcroScript - Universal Macro & Script Executor",
+  "description": "Mobile-first universal macro and gesture script executor supporting JavaScript, QuickJS, Luau, Kotlin, and C++ routines with native Android Capacitor bridge architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-mono: 'JetBrains Mono', 'Courier Prime', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  * {
+    font-family: var(--font-mono) !important;
+  }
+
+  body {
+    font-family: var(--font-mono);
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* 1. Clean Paper Light Theme (Default, typewriter paper feel) */
+.theme-clean-light {
+  --bg-primary: #f8f8f8;
+  --bg-surface: #efefef;
+  --bg-surface-elevated: #e5e5e5;
+  --bg-surface-hover: #dadada;
+  --border-subtle: #d0d0d0;
+  --border-strong: #1a1a1a;
+  --text-primary: #1a1a1a;
+  --text-secondary: #404040;
+  --text-muted: #737373;
+  --accent-primary: #1a1a1a;
+  --accent-secondary: #000000;
+  --accent-subtle: rgba(26, 26, 26, 0.08);
+  --accent-glow: rgba(26, 26, 26, 0.2);
+  --code-bg: #ffffff;
+  --terminal-bg: #f2f2f2;
+  --badge-bg: #e2e2e2;
+}
+
+/* 2. Minimalist Dark Theme */
+.theme-minimal-dark {
+  --bg-primary: #111215;
+  --bg-surface: #18191e;
+  --bg-surface-elevated: #22242b;
+  --bg-surface-hover: #2a2c35;
+  --border-subtle: #272a33;
+  --border-strong: #454955;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent-primary: #f3f4f6;
+  --accent-secondary: #9ca3af;
+  --accent-subtle: rgba(255, 255, 255, 0.08);
+  --accent-glow: rgba(255, 255, 255, 0.2);
+  --code-bg: #0d0e11;
+  --terminal-bg: #0b0c0f;
+  --badge-bg: #22242b;
+}
+
+/* 3. Cyber Neon Theme */
+.theme-cyber-neon {
+  --bg-primary: #07090e;
+  --bg-surface: #0e121a;
+  --bg-surface-elevated: #151b26;
+  --bg-surface-hover: #1f2737;
+  --border-subtle: #1e283b;
+  --border-strong: #06b6d4;
+  --text-primary: #06b6d4;
+  --text-secondary: #22d3ee;
+  --text-muted: #64748b;
+  --accent-primary: #06b6d4;
+  --accent-secondary: #a855f7;
+  --accent-subtle: rgba(6, 182, 212, 0.15);
+  --accent-glow: rgba(6, 182, 212, 0.45);
+  --code-bg: #05070a;
+  --terminal-bg: #030508;
+  --badge-bg: rgba(6, 182, 212, 0.12);
+}
+
+/* 4. Retro Terminal / Matrix Hacker Theme */
+.theme-retro-terminal {
+  --bg-primary: #030603;
+  --bg-surface: #060e06;
+  --bg-surface-elevated: #0b180b;
+  --bg-surface-hover: #102410;
+  --border-subtle: #143514;
+  --border-strong: #22c55e;
+  --text-primary: #4ade80;
+  --text-secondary: #22c55e;
+  --text-muted: #15803d;
+  --accent-primary: #22c55e;
+  --accent-secondary: #86efac;
+  --accent-subtle: rgba(34, 197, 94, 0.15);
+  --accent-glow: rgba(34, 197, 94, 0.4);
+  --code-bg: #020402;
+  --terminal-bg: #010301;
+  --badge-bg: #071507;
+}
+
+/* 5. Glassmorphic Frost Theme */
+.theme-glass-frost {
+  --bg-primary: #0a0e17;
+  --bg-surface: rgba(18, 26, 42, 0.65);
+  --bg-surface-elevated: rgba(30, 41, 66, 0.6);
+  --bg-surface-hover: rgba(45, 60, 92, 0.6);
+  --border-subtle: rgba(255, 255, 255, 0.15);
+  --border-strong: rgba(147, 197, 253, 0.45);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent-primary: #38bdf8;
+  --accent-secondary: #818cf8;
+  --accent-subtle: rgba(56, 189, 248, 0.15);
+  --accent-glow: rgba(56, 189, 248, 0.35);
+  --code-bg: rgba(6, 10, 20, 0.85);
+  --terminal-bg: rgba(4, 7, 15, 0.95);
+  --badge-bg: rgba(255, 255, 255, 0.08);
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Typewriter dashed and text-bracket helpers */
+.typewriter-border {
+  border-style: solid;
+}
+
+/* Custom scrollbar for mobile drawers & code boxes */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.3);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.5);
+}
