@@ -1,7 +1,6 @@
 #include <jni.h>
 #include <string>
 #include <cstring>
-#include <vector>
 #include <unistd.h>
 #include "quickjs/quickjs.h"
 #include "lua.h"
@@ -51,10 +50,9 @@ void nativeSwipe(float x1, float y1, float x2, float y2, long durationMs = 200) 
     if (attached) g_vm->DetachCurrentThread();
 }
 
-// --- QUICKJS BINDINGS (Fixes console.log, tap, hold, swipe, wait, sleep) ---
 static JSValue qjs_log(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv) {
     for (int i = 0; i < argc; i++) {
-        const char* str = JS_ToCString(ctx, argv);
+        const char* str = JS_ToCString(ctx, *(argv + i));
         if (str) {
             if (!g_execLog.empty()) g_execLog += "\n";
             g_execLog += str;
@@ -68,10 +66,10 @@ static JSValue qjs_tap(JSContext* ctx, JSValueConst, int argc, JSValueConst* arg
     double x = 0, y = 0;
     int64_t dur = 50;
     if (argc >= 2) {
-        JS_ToFloat64(ctx, &x, argv);
-        JS_ToFloat64(ctx, &y, argv);
+        JS_ToFloat64(ctx, &x, *(argv + 0));
+        JS_ToFloat64(ctx, &y, *(argv + 1));
     }
-    if (argc >= 3) JS_ToInt64(ctx, &dur, argv);
+    if (argc >= 3) JS_ToInt64(ctx, &dur, *(argv + 2));
     nativeTap((float)x, (float)y, (long)dur);
     return JS_UNDEFINED;
 }
@@ -80,19 +78,19 @@ static JSValue qjs_swipe(JSContext* ctx, JSValueConst, int argc, JSValueConst* a
     double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
     int64_t dur = 200;
     if (argc >= 4) {
-        JS_ToFloat64(ctx, &x1, argv);
-        JS_ToFloat64(ctx, &y1, argv);
-        JS_ToFloat64(ctx, &x2, argv);
-        JS_ToFloat64(ctx, &y2, argv);
+        JS_ToFloat64(ctx, &x1, *(argv + 0));
+        JS_ToFloat64(ctx, &y1, *(argv + 1));
+        JS_ToFloat64(ctx, &x2, *(argv + 2));
+        JS_ToFloat64(ctx, &y2, *(argv + 3));
     }
-    if (argc >= 5) JS_ToInt64(ctx, &dur, argv);
+    if (argc >= 5) JS_ToInt64(ctx, &dur, *(argv + 4));
     nativeSwipe((float)x1, (float)y1, (float)x2, (float)y2, (long)dur);
     return JS_UNDEFINED;
 }
 
 static JSValue qjs_wait(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv) {
     int32_t ms = 0;
-    if (argc >= 1) JS_ToInt32(ctx, &ms, argv);
+    if (argc >= 1) JS_ToInt32(ctx, &ms, *(argv + 0));
     if (ms > 0) usleep(ms * 1000);
     return JS_UNDEFINED;
 }
@@ -117,7 +115,6 @@ static std::string getQuickJSError(JSContext* ctx) {
     return errStr;
 }
 
-// --- LUAU BINDINGS (Fixes print, tap, hold, swipe, wait, task.wait) ---
 static int luau_print(lua_State* L) {
     int n = lua_gettop(L);
     std::string line;
@@ -153,13 +150,11 @@ static int luau_swipe(lua_State* L) {
 
 static int luau_wait(lua_State* L) {
     double val = luaL_checknumber(L, 1);
-    // Support both wait(500) in ms and task.wait(0.5) in seconds
     int ms = (val < 30.0 && val > 0.0) ? (int)(val * 1000.0) : (int)val;
     if (ms > 0) usleep(ms * 1000);
     return 0;
 }
 
-// --- JNI ENTRY POINTS ---
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_custom_macroexecutor_MacroBridgePlugin_runQuickJSNative(JNIEnv* env, jobject, jstring jcode) {
     g_execLog.clear();
@@ -168,7 +163,6 @@ Java_com_custom_macroexecutor_MacroBridgePlugin_runQuickJSNative(JNIEnv* env, jo
     JSContext* ctx = JS_NewContext(rt);
     JSValue global = JS_GetGlobalObject(ctx);
 
-    // Register console.log / warn / error / print
     JSValue consoleObj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, consoleObj, "log", JS_NewCFunction(ctx, qjs_log, "log", 1));
     JS_SetPropertyStr(ctx, consoleObj, "warn", JS_NewCFunction(ctx, qjs_log, "warn", 1));
@@ -177,7 +171,6 @@ Java_com_custom_macroexecutor_MacroBridgePlugin_runQuickJSNative(JNIEnv* env, jo
     JS_SetPropertyStr(ctx, global, "print", JS_NewCFunction(ctx, qjs_log, "print", 1));
     JS_SetPropertyStr(ctx, global, "log", JS_NewCFunction(ctx, qjs_log, "log", 1));
 
-    // Register macro functions
     JS_SetPropertyStr(ctx, global, "tap", JS_NewCFunction(ctx, qjs_tap, "tap", 3));
     JS_SetPropertyStr(ctx, global, "click", JS_NewCFunction(ctx, qjs_tap, "click", 3));
     JS_SetPropertyStr(ctx, global, "hold", JS_NewCFunction(ctx, qjs_tap, "hold", 3));
@@ -221,7 +214,6 @@ Java_com_custom_macroexecutor_MacroBridgePlugin_runLuauNative(JNIEnv* env, jobje
     lua_pushcfunction(L, luau_wait, "wait");
     lua_setglobal(L, "wait");
 
-    // Register task.wait and task.delay table
     lua_newtable(L);
     lua_pushcfunction(L, luau_wait, "wait");
     lua_setfield(L, -2, "wait");
@@ -252,7 +244,6 @@ Java_com_custom_macroexecutor_MacroBridgePlugin_runCppRoutineNative(JNIEnv* env,
     std::string script(code);
     env->ReleaseStringUTFChars(jcode, code);
 
-    // Parse tap(x, y) and wait(ms) commands directly from C++ snippet
     int actions = 0;
     size_t pos = 0;
     while ((pos = script.find("tap(", pos)) != std::string::npos) {
