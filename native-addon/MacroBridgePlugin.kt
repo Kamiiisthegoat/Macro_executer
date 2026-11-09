@@ -18,8 +18,8 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
 
 @CapacitorPlugin(name = "MacroBridge")
 class MacroBridgePlugin : Plugin() {
@@ -55,7 +55,6 @@ class MacroBridgePlugin : Plugin() {
     @PluginMethod
     fun executePipeline(call: PluginCall) {
         val blocks = call.getArray("blocks") ?: return call.reject("No pipeline blocks provided")
-        val sharedState = ConcurrentHashMap<String, Any>()
 
         activeJob?.cancel()
         activeJob = CoroutineScope(Dispatchers.IO).launch {
@@ -76,17 +75,39 @@ class MacroBridgePlugin : Plugin() {
         }
     }
 
-    private fun runSingleEngine(language: String, code: String): String {
+    private suspend fun runSingleEngine(language: String, code: String): String {
         return when (language.lowercase()) {
             "quickjs", "javascript", "js" -> runQuickJSNative(code)
             "luau" -> runLuauNative(code)
             "cpp", "c++" -> runCppRoutineNative(code, 540f, 1120f)
-            "kotlin" -> {
-                MacroAccessibilityService.tap(540f, 1120f, 50L)
-                "Kotlin native tap dispatched"
-            }
+            "kotlin" -> runKotlinScript(code)
             else -> "Unsupported engine: $language"
         }
+    }
+
+    private suspend fun runKotlinScript(code: String): String {
+        var count = 0
+        val tapRegex = Regex("""tap\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)""")
+        val waitRegex = Regex("""(?:wait|delay|sleep)\(\s*(\d+)\s*\)""")
+
+        for (line in code.lines()) {
+            val tapMatch = tapRegex.find(line)
+            val waitMatch = waitRegex.find(line)
+            if (tapMatch != null) {
+                val x = tapMatch.groupValues.toFloat()
+                val y = tapMatch.groupValues.toFloat()
+                MacroAccessibilityService.tap(x, y, 50L)
+                count++
+            } else if (waitMatch != null) {
+                val ms = waitMatch.groupValues.toLong()
+                delay(ms)
+            }
+        }
+        if (count == 0) {
+            MacroAccessibilityService.tap(540f, 1120f, 50L)
+            count = 1
+        }
+        return "Kotlin native executed ($count tap(s))"
     }
 
     @PluginMethod
@@ -151,3 +172,4 @@ class MacroBridgePlugin : Plugin() {
         return false
     }
 }
+ 
