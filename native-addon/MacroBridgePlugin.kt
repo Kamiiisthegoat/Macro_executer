@@ -94,12 +94,12 @@ class MacroBridgePlugin : Plugin() {
             val tapMatch = tapRegex.find(line)
             val waitMatch = waitRegex.find(line)
             if (tapMatch != null) {
-                val x = tapMatch.groupValues.toFloat()
-                val y = tapMatch.groupValues.toFloat()
+                val x = tapMatch.groupValues.get(1).toFloat()
+                val y = tapMatch.groupValues.get(2).toFloat()
                 MacroAccessibilityService.tap(x, y, 50L)
                 count++
             } else if (waitMatch != null) {
-                val ms = waitMatch.groupValues.toLong()
+                val ms: Long = waitMatch.groupValues.get(1).toLong()
                 delay(ms)
             }
         }
@@ -172,4 +172,3 @@ class MacroBridgePlugin : Plugin() {
         return false
     }
 }
- 
