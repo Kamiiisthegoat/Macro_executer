@@ -86,7 +86,7 @@ jobs:
               quickjs/libregexp.c
               quickjs/libunicode.c
               quickjs/cutils.c
-              quickjs/quickjs-libc.c
+              quickjs/dtoa.c
               ${LUAU_VM_SRC}
               ${LUAU_COMP_SRC}
               ${LUAU_AST_SRC}
@@ -108,11 +108,32 @@ jobs:
 
           sed -i 's|</application>|<service android:name=".MacroAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application>|' android/app/src/main/AndroidManifest.xml
 
+          cat << 'EOF' > "$PKG_DIR/MainActivity.java"
+          package com.custom.macroexecutor;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(MacroBridgePlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
+
       - name: Configure Gradle for Kotlin, Coroutines & CMake NDK
         run: |
+          sed -i 's/dependencies {/dependencies {\n        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"/' android/build.gradle
+          sed -i "s/apply plugin: 'com.android.application'/apply plugin: 'com.android.application'\napply plugin: 'kotlin-android'/" android/app/build.gradle
+
           cat << 'EOF' >> android/app/build.gradle
 
           android {
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
               externalNativeBuild {
                   cmake {
                       path "src/main/cpp/CMakeLists.txt"
@@ -121,14 +142,15 @@ jobs:
           }
 
           dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
               implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
           }
 
           configurations.all {
               resolutionStrategy {
-                  force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
-                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
-                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
               }
           }
           EOF
