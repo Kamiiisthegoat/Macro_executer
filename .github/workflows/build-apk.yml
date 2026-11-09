@@ -27,7 +27,14 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
-          npx cap init "MacroExecutor" "com.custom.macroexecutor" --web-dir dist || true
+          rm -f capacitor.config.ts
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.custom.macroexecutor",
+            "appName": "MacroExecutor",
+            "webDir": "dist"
+          }
+          EOF
           npm run build
           npx cap add android || npx cap sync android
 
